@@ -1166,6 +1166,122 @@ tr.historico-row:hover td{opacity:.82}
   #m-reserva input[type="date"].fi{padding:.85rem .85rem;font-size:.95rem}
 }
 
+/* ══════════════════════════════════════════
+   DASHBOARD CEO — Ferran Propiedades · polish
+   ══════════════════════════════════════════ */
+
+/* Executive header */
+.exec-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.6rem;padding-bottom:1.18rem;border-bottom:1px solid rgba(201,168,76,.22)}
+.exec-title{font-family:'Cormorant Garamond',serif;font-size:1.82rem;font-weight:300;color:#0E1F3D;line-height:1.1;letter-spacing:-.01em}
+.exec-sub{font-size:.5rem;letter-spacing:.3em;text-transform:uppercase;color:rgba(29,78,143,.46);margin-top:.42rem}
+.exec-hdr-right{text-align:right;flex-shrink:0}
+.exec-date{font-size:.67rem;color:#8A8480;font-weight:400}
+.exec-status-pill{display:inline-flex;align-items:center;gap:.35rem;font-size:.49rem;letter-spacing:.14em;text-transform:uppercase;font-weight:600;margin-top:.34rem;padding:.2rem .65rem;border:1px solid rgba(29,78,143,.13);border-radius:20px;background:rgba(29,78,143,.04);color:#1A3F72}
+.exec-status-dot{display:inline-block;width:6px;height:6px;border-radius:50%;flex-shrink:0}
+
+/* 4 CEO cards */
+.ceo-cards-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.9rem;margin-bottom:1.2rem}
+.ceo-card{background:#FDFCF9;border:1px solid rgba(201,168,76,.17);border-top:2px solid var(--gold);padding:1.2rem 1.3rem 1.1rem;border-radius:var(--r);position:relative;overflow:hidden;transition:box-shadow .22s,transform .2s}
+.ceo-card:hover{box-shadow:0 4px 20px rgba(14,31,61,.07),0 1px 4px rgba(201,168,76,.08);transform:translateY(-1px)}
+.ceo-card-lbl{font-size:.46rem;letter-spacing:.26em;text-transform:uppercase;color:rgba(29,78,143,.52);font-weight:600;margin-bottom:.58rem}
+.ceo-card-main{font-family:'Cormorant Garamond',serif;font-size:1.7rem;font-weight:400;color:#0E1F3D;line-height:1.1;margin-bottom:.28rem}
+.ceo-card-main.green{color:#2A6042}.ceo-card-main.red{color:#7A3030}.ceo-card-main.gold{color:var(--gold)}.ceo-card-main.blue{color:#1A3F72}.ceo-card-main.sm{font-size:1.08rem;letter-spacing:-.01em}
+.ceo-card-sub{font-size:.63rem;color:#8A8480;line-height:1.48}
+
+/* 72h operations */
+.ops72-block{background:#FDFCF9;border:1px solid rgba(201,168,76,.17);border-radius:var(--r);overflow:hidden;margin-bottom:1.18rem}
+.ops72-title-row{padding:.9rem 1.3rem .74rem;border-bottom:1px solid rgba(201,168,76,.12);display:flex;align-items:center;justify-content:space-between;background:rgba(201,168,76,.025)}
+.ops72-title{font-family:'Cormorant Garamond',serif;font-size:1rem;font-weight:400;color:#0E1F3D}
+.ops72-cols{display:grid;grid-template-columns:repeat(3,1fr)}
+.ops72-col{padding:.95rem 1.3rem;border-right:1px solid rgba(0,0,0,.04)}
+.ops72-col:last-child{border-right:none}
+.ops72-col-hdr{font-size:.42rem;letter-spacing:.28em;text-transform:uppercase;font-weight:700;padding-bottom:.54rem;margin-bottom:.62rem;border-bottom:2px solid}
+.ops72-col-hdr.ops72-entrada{color:#2A6042;border-color:rgba(42,96,66,.24)}
+.ops72-col-hdr.ops72-salida{color:#7A3030;border-color:rgba(122,48,48,.22)}
+.ops72-col-hdr.ops72-op{color:#1A3F72;border-color:rgba(26,63,114,.22)}
+.ops72-item{padding:.42rem 0;border-bottom:1px solid rgba(0,0,0,.04);font-size:.72rem;color:#2A2520;line-height:1.48}
+.ops72-item:last-child{border-bottom:none}
+.ops72-guest{font-weight:500;color:#0E1F3D}
+.ops72-meta{font-size:.62rem;color:#8A8480}
+.ops72-empty{font-size:.64rem;color:#9A9490;font-style:italic;padding:.28rem 0}
+
+/* Bottom 3-col */
+.ceo-bottom-row{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:.88rem;margin-bottom:1.18rem}
+.ceo-section-card{background:#FDFCF9;border:1px solid rgba(201,168,76,.17);border-radius:var(--r);padding:1.15rem 1.3rem}
+.ceo-section-hdr{border-bottom:1px solid rgba(201,168,76,.12);margin-bottom:.9rem;padding-bottom:.62rem}
+.ceo-section-hdr .card-title{color:#0E1F3D}
+
+/* Alertas */
+.alerta-item{display:flex;align-items:flex-start;gap:.55rem;padding:.5rem 0;border-bottom:1px solid rgba(0,0,0,.04);font-size:.72rem}
+.alerta-item:last-child{border-bottom:none}
+.alerta-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:.32rem}
+.alerta-dot.warn{background:var(--gold)}.alerta-dot.ok{background:#2A6042}.alerta-dot.red{background:#7A3030}
+.alerta-body{flex:1;line-height:1.46}
+.alerta-label{font-weight:500;color:#0E1F3D}
+.alerta-detail{font-size:.62rem;color:#8A8480}
+.alerta-none{font-size:.67rem;color:#2A6042;display:flex;align-items:center;gap:.42rem;padding:.35rem 0}
+
+/* CEO Fin card */
+.ceo-fin-item{display:flex;justify-content:space-between;align-items:center;padding:.45rem 0;border-bottom:1px solid rgba(0,0,0,.04);font-size:.76rem}
+.ceo-fin-item:last-child{border-bottom:none}
+.ceo-fin-lbl{color:#8A8480}
+.ceo-fin-total{display:flex;justify-content:space-between;align-items:center;padding:.68rem 0 .42rem;border-top:2px solid #0E1F3D;font-family:'Cormorant Garamond',serif;font-size:1rem;font-weight:600;color:#0E1F3D}
+
+/* "Ver detalle financiero" — premium deep Ferran blue */
+.ceo-section-card .btn-ghost{background:#0E1F3D;color:rgba(255,255,255,.8);border:1px solid #0E1F3D;letter-spacing:.11em}
+.ceo-section-card .btn-ghost:hover{background:#152A52;color:#fff;border-color:rgba(201,168,76,.45);box-shadow:0 2px 10px rgba(14,31,61,.18)}
+
+/* Admin checklist */
+.ceo-admin-sub{font-size:.5rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(29,78,143,.46);margin-bottom:.74rem}
+.ceo-checklist{list-style:none;padding:0;margin:0}
+.ceo-checklist li{display:flex;align-items:flex-start;gap:.52rem;padding:.42rem 0;border-bottom:1px solid rgba(0,0,0,.04);font-size:.73rem;color:#2A2520;line-height:1.42}
+.ceo-checklist li:last-child{border-bottom:none}
+.ceo-checklist li::before{content:'□';color:var(--gold);font-size:.9rem;line-height:1.08;flex-shrink:0}
+
+/* Support row: occupation + chart */
+.ceo-support-row{display:grid;grid-template-columns:240px 1fr;gap:.88rem;margin-bottom:1.05rem}
+.ceo-ocu-compact{background:#FDFCF9;border:1px solid rgba(201,168,76,.17);border-radius:var(--r);padding:1.15rem 1.3rem}
+.ceo-ocu-compact .card-title{color:#0E1F3D}
+
+/* Upcoming movements */
+.ceo-upcoming-card{background:#FDFCF9;border:1px solid rgba(201,168,76,.17);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+.ceo-upcoming-card .res-hd .card-title{color:#0E1F3D}
+.ceo-upcoming-list{padding:.35rem 0}
+.ceo-upcoming-item{display:flex;align-items:center;gap:.88rem;padding:.62rem 1.3rem;border-bottom:1px solid rgba(0,0,0,.04);font-size:.76rem;transition:background .15s;cursor:pointer}
+.ceo-upcoming-item:last-child{border-bottom:none}
+.ceo-upcoming-item:hover{background:rgba(201,168,76,.04)}
+.ceo-upcoming-date{font-family:'Cormorant Garamond',serif;font-size:1.12rem;font-weight:400;color:#0E1F3D;min-width:82px;flex-shrink:0}
+.ceo-upcoming-info{flex:1;min-width:0}
+.ceo-upcoming-guest{font-weight:500;color:#2A2520;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ceo-upcoming-meta{font-size:.62rem;color:#8A8480}
+.ceo-upcoming-type{font-size:.45rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:.1rem .44rem;border-radius:3px;flex-shrink:0}
+.ceo-upcoming-type.ci{background:rgba(42,96,66,.09);color:#2A6042}
+.ceo-upcoming-type.co{background:rgba(122,48,48,.09);color:#7A3030}
+.ceo-upcoming-type.rec{background:rgba(201,168,76,.14);color:#7A5F10}
+
+/* Hidden relay */
+.ceo-hidden-relay{display:none!important}
+
+/* CEO responsive */
+@media(max-width:1024px){
+  .ceo-cards-row{grid-template-columns:repeat(2,1fr)}
+  .ceo-bottom-row{grid-template-columns:1fr 1fr}
+  .ceo-bottom-row > .ceo-section-card:first-child{grid-column:span 2}
+  .ceo-support-row{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  .exec-hdr{flex-direction:column;gap:.55rem}
+  .exec-hdr-right{text-align:left}
+  .ceo-cards-row{grid-template-columns:1fr 1fr;gap:.55rem}
+  .ceo-card-main{font-size:1.38rem}
+  .ops72-cols{grid-template-columns:1fr}
+  .ops72-col{border-right:none;border-bottom:1px solid rgba(0,0,0,.05)}
+  .ops72-col:last-child{border-bottom:none}
+  .ceo-bottom-row{grid-template-columns:1fr}
+  .ceo-bottom-row > .ceo-section-card:first-child{grid-column:span 1}
+  .ceo-support-row{grid-template-columns:1fr}
+}
+
 </style>
 </head>
 <body>
@@ -1406,69 +1522,158 @@ tr.historico-row:hover td{opacity:.82}
     </div>
     <div class="content">
 
-      <!-- DASHBOARD CEO -->
+      <!-- DASHBOARD CEO — Oasis 506-A -->
       <div class="page active" id="page-dashboard">
-        <div class="kpi-row">
-          <div class="kpi"><div class="kpi-bar" id="kpi-bar-ocu"></div><div class="kpi-lbl">Ocupación del Mes</div><div class="kpi-val gold" id="kv-ocu">—</div><div class="kpi-sub" id="ks-ocu">calculando...</div></div>
-          <div class="kpi"><div class="kpi-bar" style="transform:scaleX(1)"></div><div class="kpi-lbl">Reservas Activas</div><div class="kpi-val blue" id="kv-res">—</div><div class="kpi-sub" id="ks-res">—</div></div>
-          <div class="kpi"><div class="kpi-bar" style="transform:scaleX(1)"></div><div class="kpi-lbl">Ingresos USD</div><div class="kpi-val green" id="kv-ing">—</div><div class="kpi-sub">historial completo</div></div>
-          <div class="kpi"><div class="kpi-bar" style="transform:scaleX(1)"></div><div class="kpi-lbl">Próx. Check-In</div><div class="kpi-val" id="kv-ci" style="font-size:1.05rem">—</div><div class="kpi-sub" id="ks-ci">—</div></div>
-          <div class="kpi"><div class="kpi-bar" style="transform:scaleX(1)"></div><div class="kpi-lbl">Días Disponibles</div><div class="kpi-val" id="kv-dis">—</div><div class="kpi-sub" id="ks-dis">—</div></div>
-        </div>
-        <div class="dash-top">
-          <!-- Tabla 3 secciones -->
-          <div class="res-card">
-            <div class="res-hd"><div class="card-title">Reservas</div><button class="btn btn-ghost btn-sm" onclick="showPage('reservations')">Ver todas →</button></div>
-            <table>
-              <thead><tr><th>Huésped</th><th>Check-In</th><th>Noches</th><th>Plataforma</th><th>Total USD</th></tr></thead>
-              <tbody id="dash-tbody"><tr><td colspan="5"><div class="empty"><span class="spin"></span></div></td></tr></tbody>
-            </table>
-          </div>
-          <!-- Derecha: Donut + Finance -->
+
+        <!-- Executive header -->
+        <div class="exec-hdr">
           <div>
-            <div class="fin-mini" style="margin-bottom:.9rem">
-              <div class="fin-mini-title">Ocupación · <span id="d-mes-lbl" style="color:var(--gold);font-size:.85rem"></span></div>
-              <div class="donut-wrap">
-                <svg width="80" height="80" viewBox="0 0 80 80" style="flex-shrink:0">
-                  <circle cx="40" cy="40" r="32" fill="none" stroke="rgba(0,0,0,.07)" stroke-width="10"/>
-                  <circle id="donut-arc" cx="40" cy="40" r="32" fill="none" stroke="var(--gold)" stroke-width="10" stroke-linecap="round" stroke-dasharray="0 201" stroke-dashoffset="50" transform="rotate(-90 40 40)" style="transition:stroke-dasharray 1.1s ease"/>
-                </svg>
-                <div class="donut-info">
-                  <div class="donut-pct"><span id="d-pct">0</span>%</div>
-                  <div class="donut-sub" id="d-sub">—</div>
-                </div>
-              </div>
-              <div>
-                <div class="donut-bar-row"><span style="width:55px">Ocupados</span><div class="donut-bar-track"><div class="donut-bar-fill" id="d-bar-oc" style="background:var(--gold);width:0%"></div></div><span id="d-bar-oc-val">0d</span></div>
-                <div class="donut-bar-row"><span style="width:55px">Libres</span><div class="donut-bar-track"><div class="donut-bar-fill" id="d-bar-lib" style="background:var(--success);width:0%"></div></div><span id="d-bar-lib-val">0d</span></div>
-              </div>
-            </div>
-            <div class="fin-mini">
-              <div class="fin-mini-title">Resumen Financiero</div>
-              <div class="fin-row-item"><span class="fin-row-lbl">Ingresos brutos CLP</span><span class="fin-val pos" id="df-brutos">—</span></div>
-              <div class="fin-row-item"><span class="fin-row-lbl">Comisiones reales</span><span class="fin-val neg" id="df-com">—</span></div>
-              <div class="fin-row-item"><span class="fin-row-lbl">Gastos fijos</span><span class="fin-val neg" id="df-gf">—</span></div>
-              <div class="fin-row-item"><span class="fin-row-lbl">Gastos variables</span><span class="fin-val neg" id="df-ex">—</span></div>
-              <div class="fin-total-row"><span>Utilidad Neta</span><span id="df-neta" class="fin-val pos">—</span></div>
-              <button class="btn btn-ink btn-sm" style="width:100%;margin-top:.8rem" onclick="showPage('liquidaciones')">Generar Liquidación →</button>
+            <div class="exec-title">Dashboard Ejecutivo</div>
+            <div class="exec-sub">Oasis 506-A · Los Colonos · Puerto Varas</div>
+          </div>
+          <div class="exec-hdr-right">
+            <div class="exec-date" id="exec-date-str">—</div>
+            <div class="exec-status-pill" id="exec-status-pill">
+              <span class="exec-status-dot" id="exec-status-dot" style="background:var(--muted)"></span>
+              <span id="exec-status-txt">Cargando...</span>
             </div>
           </div>
         </div>
-        <!-- Gráfico mensual -->
-        <div class="chart-card">
-          <div class="chart-hd">
-            <div class="card-title">Rendimiento Mensual · Ingresos / Gastos / Utilidad</div>
-            <div style="display:flex;gap:1rem;font-size:.6rem;color:var(--muted)">
-              <span style="display:flex;align-items:center;gap:.3rem"><span style="width:10px;height:10px;background:var(--gold);border-radius:2px;display:inline-block"></span>Ingresos</span>
-              <span style="display:flex;align-items:center;gap:.3rem"><span style="width:10px;height:10px;background:rgba(139,58,58,.4);border-radius:2px;display:inline-block"></span>Gastos</span>
-              <span style="display:flex;align-items:center;gap:.3rem"><span style="width:10px;height:10px;background:var(--success);border-radius:2px;display:inline-block"></span>Utilidad</span>
-            </div>
+
+        <!-- 4 CEO cards -->
+        <div class="ceo-cards-row">
+          <div class="ceo-card">
+            <div class="ceo-card-lbl">Estado hoy</div>
+            <div class="ceo-card-main" id="ceo-estado-main">—</div>
+            <div class="ceo-card-sub" id="ceo-estado-sub">cargando...</div>
           </div>
-          <div class="chart-body">
-            <div id="m-chart" style="display:flex;gap:.6rem;align-items:flex-end;height:130px"></div>
-            <div id="m-labels" style="display:flex;gap:.6rem;margin-top:.5rem"></div>
+          <div class="ceo-card">
+            <div class="ceo-card-lbl">Próximo movimiento</div>
+            <div class="ceo-card-main sm" id="ceo-prox-main">—</div>
+            <div class="ceo-card-sub" id="ceo-prox-sub">—</div>
+          </div>
+          <div class="ceo-card">
+            <div class="ceo-card-lbl">Resultado del período</div>
+            <div class="ceo-card-main" id="ceo-resultado-main">—</div>
+            <div class="ceo-card-sub" id="ceo-resultado-sub">—</div>
+          </div>
+          <div class="ceo-card">
+            <div class="ceo-card-lbl">Pendientes</div>
+            <div class="ceo-card-main" id="ceo-pend-main">—</div>
+            <div class="ceo-card-sub" id="ceo-pend-sub">Sin alertas críticas</div>
           </div>
         </div>
+
+        <!-- Hoy y próximos 15 días -->
+        <div class="ops72-block">
+          <div class="ops72-title-row">
+            <div class="ops72-title">Hoy y próximos 15 días</div>
+          </div>
+          <div class="ops72-cols">
+            <div class="ops72-col">
+              <div class="ops72-col-hdr ops72-entrada">Entradas</div>
+              <div id="ops72-entradas"><div class="ops72-empty">Cargando...</div></div>
+            </div>
+            <div class="ops72-col">
+              <div class="ops72-col-hdr ops72-salida">Salidas</div>
+              <div id="ops72-salidas"><div class="ops72-empty">Cargando...</div></div>
+            </div>
+            <div class="ops72-col">
+              <div class="ops72-col-hdr ops72-op">Operación</div>
+              <div id="ops72-op-list"><div class="ops72-empty">Cargando...</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Alertas · Resumen financiero · Vista administración -->
+        <div class="ceo-bottom-row">
+
+          <div class="ceo-section-card">
+            <div class="ceo-section-hdr"><div class="card-title">Alertas operativas</div></div>
+            <div id="ceo-alertas-body"><div class="alerta-none"><span>●</span> Cargando...</div></div>
+          </div>
+
+          <div class="ceo-section-card">
+            <div class="ceo-section-hdr"><div class="card-title">Resumen financiero</div></div>
+            <div class="ceo-fin-item"><span class="ceo-fin-lbl">Ingresos brutos CLP</span><span class="fin-val pos" id="ceo-fin-brutos">—</span></div>
+            <div class="ceo-fin-item"><span class="ceo-fin-lbl">Gastos del período</span><span class="fin-val neg" id="ceo-fin-gastos">—</span></div>
+            <div class="ceo-fin-total"><span>Resultado</span><span class="fin-val" id="ceo-fin-neta">—</span></div>
+            <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:.8rem" onclick="showPage('finances')">Ver detalle financiero →</button>
+          </div>
+
+          <div class="ceo-section-card">
+            <div class="ceo-section-hdr"><div class="card-title">Vista administración</div></div>
+            <div class="ceo-admin-sub">Qué revisar hoy</div>
+            <ul class="ceo-checklist">
+              <li>Reservas nuevas o solicitudes pendientes</li>
+              <li>Salidas próximas · coordinar limpieza</li>
+              <li>Reportes de operación</li>
+              <li>Pagos o gastos pendientes</li>
+              <li>Calendario antes de confirmar nuevas fechas</li>
+            </ul>
+          </div>
+
+        </div>
+
+        <!-- Ocupación del mes + Rendimiento mensual -->
+        <div class="ceo-support-row">
+          <div class="ceo-ocu-compact">
+            <div class="card-title" style="margin-bottom:.9rem">Ocupación · <span id="d-mes-lbl" style="color:var(--gold);font-size:.85rem"></span></div>
+            <div class="donut-wrap">
+              <svg width="72" height="72" viewBox="0 0 80 80" style="flex-shrink:0">
+                <circle cx="40" cy="40" r="32" fill="none" stroke="rgba(0,0,0,.07)" stroke-width="10"/>
+                <circle id="donut-arc" cx="40" cy="40" r="32" fill="none" stroke="var(--gold)" stroke-width="10" stroke-linecap="round" stroke-dasharray="0 201" stroke-dashoffset="50" transform="rotate(-90 40 40)" style="transition:stroke-dasharray 1.1s ease"/>
+              </svg>
+              <div class="donut-info">
+                <div class="donut-pct"><span id="d-pct">0</span>%</div>
+                <div class="donut-sub" id="d-sub">—</div>
+              </div>
+            </div>
+            <div style="margin-top:.5rem">
+              <div class="donut-bar-row"><span style="width:55px">Ocupados</span><div class="donut-bar-track"><div class="donut-bar-fill" id="d-bar-oc" style="background:var(--gold);width:0%"></div></div><span id="d-bar-oc-val">0d</span></div>
+              <div class="donut-bar-row"><span style="width:55px">Libres</span><div class="donut-bar-track"><div class="donut-bar-fill" id="d-bar-lib" style="background:var(--success);width:0%"></div></div><span id="d-bar-lib-val">0d</span></div>
+            </div>
+          </div>
+          <div class="chart-card" style="margin-bottom:0">
+            <div class="chart-hd">
+              <div class="card-title">Rendimiento mensual</div>
+              <div style="display:flex;gap:1rem;font-size:.6rem;color:var(--muted)">
+                <span style="display:flex;align-items:center;gap:.3rem"><span style="width:10px;height:10px;background:var(--gold);border-radius:2px;display:inline-block"></span>Ingresos</span>
+                <span style="display:flex;align-items:center;gap:.3rem"><span style="width:10px;height:10px;background:rgba(139,58,58,.4);border-radius:2px;display:inline-block"></span>Gastos</span>
+                <span style="display:flex;align-items:center;gap:.3rem"><span style="width:10px;height:10px;background:var(--success);border-radius:2px;display:inline-block"></span>Utilidad</span>
+              </div>
+            </div>
+            <div class="chart-body">
+              <div id="m-chart" style="display:flex;gap:.6rem;align-items:flex-end;height:130px"></div>
+              <div id="m-labels" style="display:flex;gap:.6rem;margin-top:.5rem"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Próximos movimientos — lista curada (reemplaza tabla pesada) -->
+        <div class="ceo-upcoming-card">
+          <div class="res-hd">
+            <div class="card-title">Próximos movimientos</div>
+            <button class="btn btn-ghost btn-sm" onclick="showPage('reservations')">Ver todas las reservas →</button>
+          </div>
+          <div class="ceo-upcoming-list" id="ceo-upcoming-list">
+            <div style="padding:1rem 1.2rem;font-size:.7rem;color:var(--muted)">Cargando...</div>
+          </div>
+        </div>
+
+        <!-- Relay oculto — IDs preservados para escritura de loadDashboard() -->
+        <div class="ceo-hidden-relay" aria-hidden="true">
+          <div id="kpi-bar-ocu"></div>
+          <span id="kv-ocu"></span><span id="ks-ocu"></span>
+          <span id="kv-res"></span><span id="ks-res"></span>
+          <span id="kv-ing"></span>
+          <span id="kv-ci"></span><span id="ks-ci"></span>
+          <span id="kv-dis"></span><span id="ks-dis"></span>
+          <span id="df-brutos"></span><span id="df-com"></span>
+          <span id="df-gf"></span><span id="df-ex"></span><span id="df-neta"></span>
+          <table><tbody id="dash-tbody"></tbody></table>
+        </div>
+
       </div>
 
       <!-- RESERVAS -->
@@ -3844,6 +4049,183 @@ async function loadDashboard(){
   elN.style.color=neta>=0?'var(--success)':'var(--danger)';
   renderMonthChart();
   renderOpsSummary(); // keep ops summary in sync whenever RES is refreshed
+  renderCEODash({enCurso,proximas,pending,totalUSD,neta});
+}
+
+function renderCEODash({enCurso,proximas,pending,totalUSD,neta}){
+  const hoy=new Date().toLocaleDateString('en-CA',{timeZone:'America/Santiago'});
+
+  // ── Executive header ──
+  const execDateEl=document.getElementById('exec-date-str');
+  if(execDateEl)execDateEl.textContent=new Date().toLocaleDateString('es-CL',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'America/Santiago'});
+  const eDot=document.getElementById('exec-status-dot');
+  const eTxt=document.getElementById('exec-status-txt');
+  if(eDot&&eTxt){
+    if(enCurso.length){eDot.style.background='var(--info)';eTxt.textContent='Ocupado';}
+    else if(proximas.length&&proximas[0].check_in===hoy){eDot.style.background='var(--success)';eTxt.textContent='Check-in hoy';}
+    else{eDot.style.background='var(--success)';eTxt.textContent='Disponible';}
+  }
+
+  // ── Card: Estado hoy ──
+  const cEM=document.getElementById('ceo-estado-main');
+  const cES=document.getElementById('ceo-estado-sub');
+  if(cEM&&cES){
+    if(enCurso.length){
+      const g=enCurso[0];
+      cEM.textContent=g.guest_name||'Huésped';
+      cEM.className='ceo-card-main blue sm';
+      cES.textContent='En curso · Salida: '+fmtD(g.check_out);
+    } else if(proximas.length&&proximas[0].check_in===hoy){
+      cEM.textContent='Check-in hoy';cEM.className='ceo-card-main green';
+      cES.textContent=(proximas[0].guest_name||'')+' · '+fmtD(proximas[0].check_in);
+    } else {
+      cEM.textContent='Disponible';cEM.className='ceo-card-main green';
+      cES.textContent=proximas.length?'Próxima entrada: '+fmtD(proximas[0].check_in):'Sin reservas próximas';
+    }
+  }
+
+  // ── Card: Próximo movimiento ──
+  const cPM=document.getElementById('ceo-prox-main');
+  const cPS=document.getElementById('ceo-prox-sub');
+  if(cPM&&cPS){
+    const guestSt=['pre_reserva_48h','confirmada','confirmed','paid','pagada','en_curso'];
+    const isGuestR=r=>guestSt.includes(r.status);
+    // Prefer real guest over mantencion/bloqueada_admin for CEO card — fall back if none
+    const nextCO=(RES.filter(r=>!isCancelada(r)&&isGuestR(r)&&r.check_out>hoy).sort((a,b)=>a.check_out.localeCompare(b.check_out))[0])
+               ||(RES.filter(r=>!isCancelada(r)&&r.check_out>hoy).sort((a,b)=>a.check_out.localeCompare(b.check_out))[0]);
+    const nextCI=proximas.find(isGuestR)||proximas[0];
+    const movs=[];
+    if(nextCI)movs.push({d:nextCI.check_in,type:'Entrada',r:nextCI});
+    if(nextCO)movs.push({d:nextCO.check_out,type:'Salida',r:nextCO});
+    const mov=movs.sort((a,b)=>a.d.localeCompare(b.d))[0];
+    if(mov){
+      cPM.textContent=mov.type+' · '+fmtD(mov.d);
+      cPS.textContent=(mov.r.guest_name||'').split(' ').slice(0,2).join(' ')+(mov.r.platform?' · '+mov.r.platform:'');
+    } else {cPM.textContent='Sin movimientos';cPS.textContent='Agenda libre';}
+  }
+
+  // ── Card: Resultado del período ──
+  const cRM=document.getElementById('ceo-resultado-main');
+  const cRS=document.getElementById('ceo-resultado-sub');
+  if(cRM&&cRS){
+    const abs=Math.abs(neta);
+    cRM.textContent='$'+abs.toLocaleString('es-CL');
+    cRM.className='ceo-card-main'+(neta>=0?' green':' red');
+    cRS.textContent=(neta>=0?'Utilidad neta · ':'Resultado negativo · ')+'CLP';
+  }
+
+  // ── Card: Pendientes (pre_reserva_48h only) ──
+  const cPeM=document.getElementById('ceo-pend-main');
+  const cPeS=document.getElementById('ceo-pend-sub');
+  // pre48 in scope for alertas section below — do not redeclare there
+  const pre48=RES.filter(r=>r.status==='pre_reserva_48h');
+  // Format ISO datetime → "DD MMM HH:mm" (Santiago)
+  const fmtExp=iso=>{
+    if(!iso)return null;
+    const d=new Date(iso);if(isNaN(d))return null;
+    return d.toLocaleDateString('es-CL',{day:'2-digit',month:'short',timeZone:'America/Santiago'})
+          +' · '+d.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/Santiago'});
+  };
+  // Resolve expiration: hold_expires_at → updated_at+48h → created_at+48h → null
+  const getExp=r=>{
+    if(r.hold_expires_at)return fmtExp(r.hold_expires_at);
+    const base=r.updated_at||r.created_at;
+    if(base)return fmtExp(new Date(new Date(base).getTime()+48*3600000).toISOString());
+    return null;
+  };
+  if(cPeM&&cPeS){
+    if(pre48.length){
+      cPeM.textContent=pre48.length===1?'1 pre-reserva':pre48.length+' pre-reservas';
+      cPeM.className='ceo-card-main gold sm';
+      const earliest=pre48.slice().sort((a,b)=>{
+        const ea=a.hold_expires_at||a.updated_at||a.created_at||'';
+        const eb=b.hold_expires_at||b.updated_at||b.created_at||'';
+        return ea.localeCompare(eb);
+      })[0];
+      const expStr=getExp(earliest);
+      cPeS.textContent=expStr?(pre48.length===1?'Vence: ':'Próxima vence: ')+expStr:'Revisar pago / confirmar';
+    } else {
+      cPeM.textContent='Sin pre-reservas';cPeM.className='ceo-card-main sm';
+      cPeS.textContent='Operación normal';
+    }
+  }
+
+  // ── Próximos 15 días ──
+  const d72=new Date(hoy+'T12:00:00');d72.setDate(d72.getDate()+15);
+  const cut72=d72.toISOString().split('T')[0];
+  const entradas72=RES.filter(r=>!isCancelada(r)&&r.check_in>=hoy&&r.check_in<=cut72).sort((a,b)=>a.check_in.localeCompare(b.check_in));
+  const salidas72=RES.filter(r=>!isCancelada(r)&&r.check_out>=hoy&&r.check_out<=cut72).sort((a,b)=>a.check_out.localeCompare(b.check_out));
+  const ops72item=(r,d)=>`<div class="ops72-item"><div class="ops72-guest">${(r.guest_name||'—').split(' ').slice(0,2).join(' ')}</div><div class="ops72-meta">${r.platform||'—'} · ${fmtD(d)}</div></div>`;
+  const e72=document.getElementById('ops72-entradas');
+  if(e72)e72.innerHTML=entradas72.length?entradas72.map(r=>ops72item(r,r.check_in)).join(''):'<div class="ops72-empty">Sin entradas</div>';
+  const s72=document.getElementById('ops72-salidas');
+  if(s72)s72.innerHTML=salidas72.length?salidas72.map(r=>ops72item(r,r.check_out)).join(''):'<div class="ops72-empty">Sin salidas</div>';
+  const opList=document.getElementById('ops72-op-list');
+  if(opList){
+    const gSt=['pre_reserva_48h','confirmada','confirmed','paid','pagada','en_curso'];
+    const isGR=r=>gSt.includes(r.status);
+    // Real guest = active status AND name does not include "test"
+    const isRealGuest=r=>isGR(r)&&!(r.guest_name||'').toLowerCase().includes('test');
+    const opItems=[];
+    // 1. All same-day recambios (keep test recambio visible)
+    const recambiosAll=entradas72.filter(r=>salidas72.some(s=>s.check_out===r.check_in));
+    recambiosAll.forEach(r=>{
+      opItems.push(isRealGuest(r)
+        ?`<div class="ops72-item"><div class="ops72-guest">Recambio · ${fmtD(r.check_in)}</div><div class="ops72-meta">${(r.guest_name||'—').split(' ').slice(0,2).join(' ')} · entrada</div></div>`
+        :`<div class="ops72-item"><div class="ops72-guest">Recambio · ${fmtD(r.check_in)}</div><div class="ops72-meta">Salida + entrada mismo día</div></div>`);
+    });
+    // 2. Next real guest check-in not already covered by a recambio on the same date
+    const recDates=new Set(recambiosAll.map(r=>r.check_in));
+    const nextRealCI=entradas72.find(r=>isRealGuest(r)&&!recDates.has(r.check_in));
+    if(nextRealCI)opItems.push(
+      `<div class="ops72-item"><div class="ops72-guest">${(nextRealCI.guest_name||'—').split(' ').slice(0,2).join(' ')} · ${fmtD(nextRealCI.check_in)}</div><div class="ops72-meta">${nextRealCI.platform||'—'} · Check-in</div></div>`);
+    // 3. Render — max 3 items; fallback if window has data but nothing qualifies
+    if(opItems.length)opList.innerHTML=opItems.slice(0,3).join('');
+    else if(entradas72.length||salidas72.length)opList.innerHTML='<div class="ops72-empty">Sin recambios · operación estándar</div>';
+    else opList.innerHTML='<div class="ops72-empty">Sin operaciones</div>';
+  }
+
+  // ── Alertas operativas ──
+  const alertasEl=document.getElementById('ceo-alertas-body');
+  if(alertasEl){
+    const alerts=[];
+    if(pending.length)alerts.push({tipo:'warn',label:'Solicitudes pendientes',detail:pending.length+' solicitud'+(pending.length>1?'es':'')+' sin confirmar'});
+    // pre48 and getExp defined above in Pendientes block — reuse here
+    if(pre48.length)alerts.push({tipo:'warn',label:'Pre-reservas 48h',detail:pre48.map(r=>{const exp=getExp(r);return(r.guest_name||'—').split(' ').slice(0,2).join(' ')+(r.platform?' · '+r.platform:'')+' · '+fmtD(r.check_in)+(exp?' · Vence: '+exp:'');}).join(' | ')});
+    if(salidas72.length)alerts.push({tipo:'ok',label:'Salidas próximas',detail:salidas72.map(r=>(r.guest_name||'').split(' ')[0]+' · '+fmtD(r.check_out)).join(' | ')});
+    if(entradas72.length)alerts.push({tipo:'ok',label:'Entradas próximas',detail:entradas72.map(r=>(r.guest_name||'').split(' ')[0]+' · '+fmtD(r.check_in)).join(' | ')});
+    alertasEl.innerHTML=alerts.length
+      ?alerts.map(a=>`<div class="alerta-item"><div class="alerta-dot ${a.tipo}"></div><div class="alerta-body"><div class="alerta-label">${a.label}</div><div class="alerta-detail">${a.detail}</div></div></div>`).join('')
+      :'<div class="alerta-none"><span>●</span> Sin alertas críticas por ahora.</div>';
+  }
+
+  // ── CEO Resumen financiero ──
+  const totalCOM_=Object.values(COM_REALES).reduce((s,v)=>s+v,0);
+  const totalGF_=Object.values(GF_REALES).reduce((s,v)=>s+v,0);
+  const totalGV_=Object.values(GV_REALES).reduce((s,v)=>s+v,0);
+  const brCLP_=Math.round(totalUSD*USD_CLP);
+  const totalGastos_=totalCOM_+totalGF_+totalGV_;
+  const cFB=document.getElementById('ceo-fin-brutos');
+  const cFG=document.getElementById('ceo-fin-gastos');
+  const cFN=document.getElementById('ceo-fin-neta');
+  if(cFB)cFB.textContent='$'+brCLP_.toLocaleString('es-CL');
+  if(cFG)cFG.textContent='-$'+totalGastos_.toLocaleString('es-CL');
+  if(cFN){cFN.textContent='$'+neta.toLocaleString('es-CL');cFN.style.color=neta>=0?'var(--success)':'var(--danger)';}
+
+  // ── Próximos movimientos (lista curada) ──
+  const ucList=document.getElementById('ceo-upcoming-list');
+  if(ucList){
+    const upcoming=[];
+    RES.filter(r=>!isCancelada(r)&&(r.check_in>=hoy||r.check_out>=hoy)).forEach(r=>{
+      if(r.check_in>=hoy)upcoming.push({d:r.check_in,type:'ci',r});
+      if(r.check_out>=hoy)upcoming.push({d:r.check_out,type:'co',r});
+    });
+    upcoming.sort((a,b)=>a.d.localeCompare(b.d)||a.type.localeCompare(b.type));
+    const shown=upcoming.slice(0,8);
+    ucList.innerHTML=shown.length
+      ?shown.map(m=>`<div class="ceo-upcoming-item" onclick="verDet('${m.r.id}')"><div class="ceo-upcoming-date">${fmtD(m.d)}</div><div class="ceo-upcoming-info"><div class="ceo-upcoming-guest">${(m.r.guest_name||'—').split(' ').slice(0,2).join(' ')}</div><div class="ceo-upcoming-meta">${m.r.platform||'—'}${m.r.total_usd&&parseFloat(m.r.total_usd)>0?' · $'+parseFloat(m.r.total_usd).toLocaleString('en-US',{minimumFractionDigits:0})+'USD':''}</div></div><span class="ceo-upcoming-type ${m.type}">${m.type==='ci'?'Check-in':'Check-out'}</span></div>`).join('')
+      :'<div style="padding:1rem 1.2rem;font-size:.7rem;color:var(--muted)">Sin movimientos próximos</div>';
+  }
 }
 
 function renderMonthChart(){
