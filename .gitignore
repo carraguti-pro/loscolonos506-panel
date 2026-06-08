@@ -1,0 +1,10 @@
+# Backups
+index.backup_*.html
+index.backup_before_*.html
+
+# Deploy artifacts
+panel_deploy.zip
+*.zip
+
+# macOS
+.DS_Store
