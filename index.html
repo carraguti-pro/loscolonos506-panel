@@ -3843,6 +3843,7 @@ async function loadDashboard(){
   elN.textContent='$'+neta.toLocaleString('es-CL');
   elN.style.color=neta>=0?'var(--success)':'var(--danger)';
   renderMonthChart();
+  renderOpsSummary(); // keep ops summary in sync whenever RES is refreshed
 }
 
 function renderMonthChart(){
