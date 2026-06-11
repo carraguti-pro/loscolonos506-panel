@@ -6136,7 +6136,7 @@ async function loadServicios(){
 // ── Notas internas del propietario ─────────────────────────────────────
 async function loadOwnerNotes(){
   const formEl=document.getElementById('sv-owner-note-form');
-  if(formEl)formEl.style.display=CU?.role==='admin'?'':'none';
+  if(formEl)formEl.style.display=CU?.role==='admin'?'block':'none';
   const listEl=document.getElementById('sv-owner-notes-list');
   if(!listEl)return;
   listEl.innerHTML='<div class="empty" style="padding:.6rem 0">Cargando…</div>';
