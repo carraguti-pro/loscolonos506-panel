@@ -1357,6 +1357,15 @@ tr.historico-row:hover td{opacity:.82}
       <table><thead><tr><th>Huésped</th><th>Check-In</th><th>Check-Out</th><th>Noches</th><th>Plataforma</th><th>Estado</th><th></th></tr></thead>
       <tbody id="sv-tbody"><tr><td colspan="7"><div class="empty"><span class="spin"></span></div></td></tr></tbody></table>
     </div>
+    <!-- ── Notas internas / Instrucciones del propietario ── -->
+    <div id="sv-owner-notes-block" style="margin-bottom:1.2rem">
+      <div class="sh" style="margin-bottom:.75rem"><div style="font-family:'Cormorant Garamond',serif;font-size:.98rem">📋 Notas internas · Instrucciones del propietario</div></div>
+      <div id="sv-owner-note-form" style="display:none;margin-bottom:.85rem">
+        <textarea id="sv-owner-note-txt" class="fi" rows="4" style="width:100%;resize:vertical;font-size:.78rem;line-height:1.55" placeholder="Escribe una instrucción interna para el equipo de operaciones…"></textarea>
+        <button class="btn btn-ink btn-sm" style="margin-top:.45rem" onclick="saveOwnerNote()">Guardar nota interna</button>
+      </div>
+      <div id="sv-owner-notes-list"><div class="empty" style="padding:.6rem 0"><span class="spin"></span></div></div>
+    </div>
     <div class="two-col">
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.7rem">
@@ -2697,7 +2706,7 @@ async function loadOpsReports(){
   if(!list)return;
   list.innerHTML='<div class="empty" style="padding:1rem 0">Cargando...</div>';
   const data=await sbGet('checkout_reports','order=created_at.desc&limit=200');
-  const rows=Array.isArray(data)?data.filter(r=>r.checklist?.tipo!=='payment_request'):[];
+  const rows=Array.isArray(data)?data.filter(r=>r.checklist?.tipo!=='payment_request'&&r.checklist?.tipo!=='owner_note'):[];
   OPS_REPORTS=rows;
   if(!rows.length){list.innerHTML='<div class="empty" style="padding:1.5rem 0">Sin reportes registrados.</div>';return;}
   const efLabel=v=>({en_proceso:'En proceso',listo:'Listo',con_observaciones:'Con observaciones',con_danos:'Con daños / incidencia',good:'Buen estado',issues:'Con observaciones',damage:'Con daños'}[v]||v||'—');
@@ -6122,6 +6131,53 @@ async function loadServicios(){
   SV_INS=Array.isArray(ins)?ins:[];
   document.getElementById('sv-insumos').innerHTML=SV_INS.length?SV_INS.map((i,idx)=>insCard(i,idx)).join(''):'<div class="empty" style="padding:1rem">Sin insumos<br><button class="btn btn-ghost btn-sm" style="margin-top:.5rem" onclick="openModal(\'m-insumo\')">+ Agregar</button></div>';
   adjF(0);
+  loadOwnerNotes();
+}
+// ── Notas internas del propietario ─────────────────────────────────────
+async function loadOwnerNotes(){
+  const formEl=document.getElementById('sv-owner-note-form');
+  if(formEl)formEl.style.display=CU?.role==='admin'?'':'none';
+  const listEl=document.getElementById('sv-owner-notes-list');
+  if(!listEl)return;
+  listEl.innerHTML='<div class="empty" style="padding:.6rem 0">Cargando…</div>';
+  const data=await sbGet('checkout_reports','order=created_at.desc&limit=50');
+  const rows=Array.isArray(data)?data.filter(r=>r.checklist?.tipo==='owner_note'):[];
+  if(!rows.length){listEl.innerHTML='<div class="empty" style="padding:.8rem 0;color:var(--muted)">Sin notas internas activas.</div>';return;}
+  listEl.innerHTML=rows.map(r=>{
+    const cl=r.checklist||{};
+    const activa=(cl.estado||'activa')==='activa';
+    const fecha=r.created_at?new Date(r.created_at).toLocaleString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'America/Santiago'}):'—';
+    const bc=activa?'#a07000':'#888';
+    const adminBtn=(CU?.role==='admin'&&activa)?`<button class="btn btn-ghost btn-xs" style="margin-top:.4rem;font-size:.58rem" onclick="markOwnerNoteResolved('${r.id}')">Marcar resuelta</button>`:'';
+    return`<div style="border:1px solid ${activa?'rgba(201,168,76,.22)':'rgba(0,0,0,.07)'};border-left:3px solid ${activa?'var(--gold)':'#ccc'};border-radius:.45rem;padding:.65rem .85rem;margin-bottom:.5rem;background:${activa?'#fffef8':'#f8f8f8'};opacity:${activa?1:.72}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.32rem;flex-wrap:wrap;gap:.3rem">
+        <div style="font-size:.68rem;color:var(--muted)">${fecha}${r.created_by?' · '+r.created_by:''}</div>
+        <span style="font-size:.62rem;font-weight:700;color:${bc};background:${bc}18;border:1px solid ${bc}33;border-radius:20px;padding:.1rem .45rem">${activa?'Activa':'Resuelta'}</span>
+      </div>
+      <div style="font-size:.88rem;color:var(--ink);white-space:pre-wrap;line-height:1.55">${r.notes||'—'}</div>
+      ${adminBtn}
+    </div>`;
+  }).join('');
+}
+async function saveOwnerNote(){
+  if(CU?.role!=='admin'){toast('Solo el administrador puede crear notas internas.','err');return;}
+  const txtEl=document.getElementById('sv-owner-note-txt');
+  const txt=(txtEl?.value||'').trim();
+  if(!txt){toast('Escribe una nota antes de guardar.','err');return;}
+  const r=await sbPost('checkout_reports',{
+    reservation_id:null,
+    notes:txt,
+    created_by:CU?.name||CU?.email||'Admin',
+    checklist:{tipo:'owner_note',estado:'activa'}
+  });
+  if(r.ok){toast('✅ Nota interna guardada.','ok');if(txtEl)txtEl.value='';await loadOwnerNotes();}
+  else toast('Error al guardar nota. Intenta nuevamente.','err');
+}
+async function markOwnerNoteResolved(id){
+  if(CU?.role!=='admin'){toast('Solo el administrador puede resolver notas.','err');return;}
+  const r=await sbPatch('checkout_reports',id,{checklist:{tipo:'owner_note',estado:'resuelta'}});
+  if(r.ok){toast('Nota marcada como resuelta.','ok');await loadOwnerNotes();}
+  else toast('Error al actualizar nota.','err');
 }
 function tgl(el){
   el.classList.toggle('done');el.textContent=el.classList.contains('done')?'✓':'';
