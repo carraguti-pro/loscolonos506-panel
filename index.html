@@ -1352,7 +1352,7 @@ tr.historico-row:hover td{opacity:.82}
       <div><div style="font-family:'Cormorant Garamond',serif;font-size:1.4rem;color:var(--ink)">Servicios y Operaciones</div><div style="font-size:.6rem;color:var(--muted);margin-top:.2rem" id="sv-fecha"></div></div>
       <button class="btn btn-ink" onclick="openReporte()">+ Reporte</button>
     </div>
-    <div class="sh"><div style="font-family:'Cormorant Garamond',serif;font-size:.98rem">Próximas Llegadas</div></div>
+    <div class="sh"><div style="font-family:'Cormorant Garamond',serif;font-size:.98rem">Operaciones próximas y salidas recientes</div></div>
     <div class="tbl-wrap" style="margin-bottom:1.4rem">
       <table><thead><tr><th>Huésped</th><th>Check-In</th><th>Check-Out</th><th>Noches</th><th>Plataforma</th><th>Estado</th><th></th></tr></thead>
       <tbody id="sv-tbody"><tr><td colspan="7"><div class="empty"><span class="spin"></span></div></td></tr></tbody></table>
@@ -6093,12 +6093,15 @@ ${(d.delMes||[]).length?(d.delMes||[]).map(r=>`<div class="res-row"><div><div cl
 // Estado operacional para lista de staff — NO afecta vista admin
 function svOpStatus(x,hoy){
   if(['mantencion','bloqueada_admin'].includes(x.status))return x.status;
+  if(x.check_out<hoy)return'salida_reciente';
   if(x.check_in<=hoy&&x.check_out>hoy)return'huesped_alojado';
   if(x.check_out===hoy)return'salida_hoy';
   return x.status;
 }
 async function loadServicios(){
   const hoy=new Date().toLocaleDateString('en-CA',{timeZone:'America/Santiago'});
+  const _d7=new Date(hoy+'T12:00:00');_d7.setDate(_d7.getDate()-7);
+  const hoy7=_d7.toLocaleDateString('en-CA',{timeZone:'America/Santiago'});
   let r=[];
   if(CU?.role==='staff'){
     // Staff: RPC segura — sin email, teléfono ni datos financieros
@@ -6107,14 +6110,14 @@ async function loadServicios(){
         {method:'POST',headers:{...sbH(),'Content-Type':'application/json'},body:'{}'});
       const raw=await resp.json();
       const d45=new Date(Date.now()+45*24*60*60*1000).toLocaleDateString('en-CA',{timeZone:'America/Santiago'});
-      r=Array.isArray(raw)?raw.filter(x=>x.check_out>=hoy&&x.check_in<=d45&&!['cancelled','cancelada','expirada'].includes(x.status)).sort((a,b)=>a.check_in.localeCompare(b.check_in)).slice(0,20):[];
+      r=Array.isArray(raw)?raw.filter(x=>x.check_out>=hoy7&&x.check_in<=d45&&!['cancelled','cancelada','expirada'].includes(x.status)).sort((a,b)=>a.check_in.localeCompare(b.check_in)).slice(0,20):[];
     }catch(e){console.warn('[Panel] loadServicios RPC:',e);}
   }else{
-    const data=await sbGet('reservations',`check_out=gte.${hoy}&status=not.in.(cancelled,cancelada,expirada)&order=check_in.asc&limit=20`);
+    const data=await sbGet('reservations',`check_out=gte.${hoy7}&status=not.in.(cancelled,cancelada,expirada)&order=check_in.asc&limit=20`);
     r=Array.isArray(data)?data:[];
   }
   SV_RES=r;
-  document.getElementById('sv-tbody').innerHTML=r.length?r.map((x,i)=>{const os=CU?.role==='staff'?svOpStatus(x,hoy):x.status;return`<tr><td><strong>${x.guest_name||'—'}</strong></td><td>${fmtD(x.check_in)}</td><td>${fmtD(x.check_out)}</td><td>${x.nights||calcN(x.check_in,x.check_out)}</td><td>${platBadge(x.platform)}</td><td>${stBadge(os)}</td><td><button class="btn btn-ghost btn-xs" onclick="openReporte(${i})">Reporte</button></td></tr>`;}).join(''):'<tr><td colspan="7"><div class="empty">Sin reservas próximas</div></td></tr>';
+  document.getElementById('sv-tbody').innerHTML=r.length?r.map((x,i)=>{const os=svOpStatus(x,hoy);return`<tr><td><strong>${x.guest_name||'—'}</strong></td><td>${fmtD(x.check_in)}</td><td>${fmtD(x.check_out)}</td><td>${x.nights||calcN(x.check_in,x.check_out)}</td><td>${platBadge(x.platform)}</td><td>${stBadge(os)}</td><td><button class="btn btn-ghost btn-xs" onclick="openReporte(${i})">Reporte</button></td></tr>`;}).join(''):'<tr><td colspan="7"><div class="empty">Sin reservas próximas</div></td></tr>';
   const ins=await sbGet('supply_alerts','order=item.asc&limit=50');
   SV_INS=Array.isArray(ins)?ins:[];
   document.getElementById('sv-insumos').innerHTML=SV_INS.length?SV_INS.map((i,idx)=>insCard(i,idx)).join(''):'<div class="empty" style="padding:1rem">Sin insumos<br><button class="btn btn-ghost btn-sm" style="margin-top:.5rem" onclick="openModal(\'m-insumo\')">+ Agregar</button></div>';
@@ -6640,6 +6643,7 @@ function stBadge(s){const m={
   cancelled:['Cancelada','b-cancelled'],
   cancelada:['Cancelada','b-cancelled'],
   expirada:['Expirada','b-cancelled'],
+  salida_reciente:['Salida reciente','b-mant'],
   bloqueada_admin:['🔒 Bloqueado','b-mant'],
   mantencion:['🔧 Mantención','b-mant']
 };const[l,c]=m[s]||[s||'—','b-pending'];return`<span class="badge ${c}">${l}</span>`;}
