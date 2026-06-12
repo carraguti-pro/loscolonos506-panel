@@ -1350,21 +1350,23 @@ tr.historico-row:hover td{opacity:.82}
   <div class="sv-content">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem;flex-wrap:wrap;gap:.8rem">
       <div><div style="font-family:'Cormorant Garamond',serif;font-size:1.4rem;color:var(--ink)">Servicios y Operaciones</div><div style="font-size:.6rem;color:var(--muted);margin-top:.2rem" id="sv-fecha"></div></div>
-      <button class="btn btn-ink" onclick="openReporte()">+ Reporte</button>
-    </div>
-    <div class="sh"><div style="font-family:'Cormorant Garamond',serif;font-size:.98rem">Operaciones próximas y salidas recientes</div></div>
-    <div class="tbl-wrap" style="margin-bottom:1.4rem">
-      <table><thead><tr><th>Huésped</th><th>Check-In</th><th>Check-Out</th><th>Noches</th><th>Plataforma</th><th>Estado</th><th></th></tr></thead>
-      <tbody id="sv-tbody"><tr><td colspan="7"><div class="empty"><span class="spin"></span></div></td></tr></tbody></table>
+      <button id="sv-reporte-btn" class="btn btn-ink" onclick="openReporte()">+ Reporte</button>
     </div>
     <!-- ── Notas internas / Instrucciones del propietario ── -->
     <div id="sv-owner-notes-block" style="margin-bottom:1.2rem">
-      <div class="sh" style="margin-bottom:.75rem"><div style="font-family:'Cormorant Garamond',serif;font-size:.98rem">📋 Notas internas · Instrucciones del propietario</div></div>
+      <div class="sh" style="margin-bottom:.35rem"><div style="font-family:'Cormorant Garamond',serif;font-size:.98rem">📋 Leer primero · Instrucciones del propietario</div></div>
+      <div style="font-size:.65rem;color:var(--muted);margin-bottom:.75rem;padding:0 .1rem">Revisa estas instrucciones antes de iniciar limpieza, revisión o preparación del departamento.</div>
       <div id="sv-owner-note-form" style="display:none;margin-bottom:.85rem">
         <textarea id="sv-owner-note-txt" class="fi" rows="4" style="width:100%;resize:vertical;font-size:.78rem;line-height:1.55" placeholder="Escribe una instrucción interna para el equipo de operaciones…"></textarea>
         <button class="btn btn-ink btn-sm" style="margin-top:.45rem" onclick="saveOwnerNote()">Guardar nota interna</button>
       </div>
       <div id="sv-owner-notes-list"><div class="empty" style="padding:.6rem 0"><span class="spin"></span></div></div>
+    </div>
+    <div class="sh" style="margin-bottom:.25rem"><div style="font-family:'Cormorant Garamond',serif;font-size:.98rem">Tareas operativas</div></div>
+    <div style="font-size:.65rem;color:var(--muted);margin-bottom:.85rem;padding:0 .1rem">Selecciona la acción según corresponda: salida reciente, mantención o próximo ingreso.</div>
+    <div class="tbl-wrap" style="margin-bottom:1.4rem">
+      <table><thead><tr><th>Huésped</th><th>Check-In</th><th>Check-Out</th><th>Noches</th><th>Plataforma</th><th>Estado</th><th></th></tr></thead>
+      <tbody id="sv-tbody"><tr><td colspan="7"><div class="empty"><span class="spin"></span></div></td></tr></tbody></table>
     </div>
     <div class="two-col">
       <div class="card">
@@ -6126,7 +6128,10 @@ async function loadServicios(){
     r=Array.isArray(data)?data:[];
   }
   SV_RES=r;
-  document.getElementById('sv-tbody').innerHTML=r.length?r.map((x,i)=>{const os=svOpStatus(x,hoy);return`<tr><td><strong>${x.guest_name||'—'}</strong></td><td>${fmtD(x.check_in)}</td><td>${fmtD(x.check_out)}</td><td>${x.nights||calcN(x.check_in,x.check_out)}</td><td>${platBadge(x.platform)}</td><td>${stBadge(os)}</td><td><button class="btn btn-ghost btn-xs" onclick="openReporte(${i})">Reporte</button></td></tr>`;}).join(''):'<tr><td colspan="7"><div class="empty">Sin reservas próximas</div></td></tr>';
+  const svBtnLbl=os=>['salida_reciente','salida_hoy','huesped_alojado'].includes(os)?'Reporte check-out':['bloqueada_admin','mantencion'].includes(os)?'Registrar observación':'Preparar ingreso';
+  const repBtn=document.getElementById('sv-reporte-btn');
+  if(repBtn)repBtn.style.display=CU?.role==='admin'?'':'none';
+  document.getElementById('sv-tbody').innerHTML=r.length?r.map((x,i)=>{const os=svOpStatus(x,hoy);return`<tr><td><strong>${x.guest_name||'—'}</strong></td><td>${fmtD(x.check_in)}</td><td>${fmtD(x.check_out)}</td><td>${x.nights||calcN(x.check_in,x.check_out)}</td><td>${platBadge(x.platform)}</td><td>${stBadge(os)}</td><td><button class="btn btn-ghost btn-xs" onclick="openReporte(${i})">${svBtnLbl(os)}</button></td></tr>`;}).join(''):'<tr><td colspan="7"><div class="empty">Sin reservas próximas</div></td></tr>';
   const ins=await sbGet('supply_alerts','order=item.asc&limit=50');
   SV_INS=Array.isArray(ins)?ins:[];
   document.getElementById('sv-insumos').innerHTML=SV_INS.length?SV_INS.map((i,idx)=>insCard(i,idx)).join(''):'<div class="empty" style="padding:1rem">Sin insumos<br><button class="btn btn-ghost btn-sm" style="margin-top:.5rem" onclick="openModal(\'m-insumo\')">+ Agregar</button></div>';
