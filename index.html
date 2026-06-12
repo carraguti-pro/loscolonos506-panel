@@ -1378,7 +1378,7 @@ tr.historico-row:hover td{opacity:.82}
         <div id="chk-pct" style="font-size:.58rem;color:var(--muted);margin-bottom:.8rem">0% completado</div>
         <div>
           <div class="chk-item"><div class="chk" onclick="tgl(this)"></div><div><span class="chk-lbl">Aspirar y trapear pisos</span><span class="chk-cat">General</span></div></div>
-          <div class="chk-item"><div class="chk" onclick="tgl(this)"></div><div><span class="chk-lbl">Limpiar baños completos (3)</span><span class="chk-cat">Baños</span></div></div>
+          <div class="chk-item"><div class="chk" onclick="tgl(this)"></div><div><span class="chk-lbl">Limpiar baños completos (2)</span><span class="chk-cat">Baños</span></div></div>
           <div class="chk-item"><div class="chk" onclick="tgl(this)"></div><div><span class="chk-lbl">Cambiar ropa de cama</span><span class="chk-cat">Dormitorios</span></div></div>
           <div class="chk-item"><div class="chk" onclick="tgl(this)"></div><div><span class="chk-lbl">Limpiar y ordenar cocina</span><span class="chk-cat">Cocina</span></div></div>
           <div class="chk-item"><div class="chk" onclick="tgl(this)"></div><div><span class="chk-lbl">Reponer amenidades baño</span><span class="chk-cat">Insumos</span></div></div>
@@ -2361,14 +2361,15 @@ tr.historico-row:hover td{opacity:.82}
 </div>
 <div class="overlay" id="m-reporte">
   <div class="modal">
-    <div class="modal-hd"><div><div class="modal-title">Reporte de Operaciones</div><div id="rep-ctx" style="display:none;font-size:.57rem;color:var(--muted);margin-top:.1rem"></div></div><button class="modal-x" onclick="closeModal('m-reporte')">✕</button></div>
+    <div class="modal-hd"><div><div class="modal-title" id="rep-modal-title">Reporte de Operaciones</div><div id="rep-ctx" style="display:none;font-size:.57rem;color:var(--muted);margin-top:.1rem"></div></div><button class="modal-x" onclick="closeModal('m-reporte')">✕</button></div>
     <div class="modal-body">
-      <div class="fg"><label class="fl">Tipo</label><select class="fs" id="rep-tipo"><option value="checkout">Check-Out</option><option value="checkin">Check-In</option><option value="maintenance">Mantención</option><option value="incident">Incidencia</option></select></div>
+      <div class="fg" id="rep-grp-tipo"><label class="fl">Tipo</label><select class="fs" id="rep-tipo"><option value="checkout">Check-Out</option><option value="checkin">Check-In</option><option value="maintenance">Mantención</option><option value="incident">Incidencia</option></select></div>
       <div class="fg"><label class="fl">Fecha de operación</label><input type="date" class="fi" id="rep-fecha"></div>
-      <div class="form-row"><div class="fg"><label class="fl">Hora inicio limpieza/revisión</label><input type="time" class="fi" id="rep-hora-in"></div><div class="fg"><label class="fl">Hora término limpieza/revisión</label><input type="time" class="fi" id="rep-hora-out"></div></div>
-      <div class="fg"><label class="fl">Estado final</label><select class="fs" id="rep-estado"><option value="en_proceso">En proceso</option><option value="listo">Listo</option><option value="con_observaciones">Con observaciones</option><option value="con_danos">Con daños / incidencia</option></select></div>
+      <div class="form-row" id="rep-grp-horas"><div class="fg"><label class="fl">Hora inicio limpieza/revisión</label><input type="time" class="fi" id="rep-hora-in"></div><div class="fg"><label class="fl">Hora término limpieza/revisión</label><input type="time" class="fi" id="rep-hora-out"></div></div>
+      <div class="fg" id="rep-grp-estado"><label class="fl">Estado final</label><select class="fs" id="rep-estado"><option value="en_proceso">En proceso</option><option value="listo">Listo</option><option value="con_observaciones">Con observaciones</option><option value="con_danos">Con daños / incidencia</option></select></div>
+      <div class="fg" id="rep-grp-mant-estado" style="display:none"><label class="fl">Estado de mantención</label><select class="fs" id="rep-mant-estado"><option value="en_proceso">En proceso</option><option value="pendiente_lavanderia">Pendiente lavandería</option><option value="pendiente_revision">Pendiente revisión</option><option value="operativo">Departamento operativo</option><option value="cerrado">Cerrado</option></select></div>
       <div class="fg"><div style="font-size:.72rem;background:#f0f4ff;border:1px solid rgba(60,100,200,.13);border-radius:.35rem;padding:.32rem .55rem"><span style="color:var(--muted)">Responsable operación: </span><span id="rep-responsable" style="font-weight:600;color:var(--ink)">—</span></div></div>
-      <div class="fg"><label class="fl" style="margin-bottom:.45rem">Situaciones especiales</label>
+      <div class="fg" id="rep-grp-situaciones"><label class="fl" style="margin-bottom:.45rem">Situaciones especiales</label>
         <div style="display:flex;flex-direction:column;gap:.4rem">
           <div style="background:#f8f8f8;border:1px solid rgba(0,0,0,.07);border-radius:.4rem;padding:.5rem .6rem"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:.74rem;color:var(--ink)">¿Pertenencias o valores olvidados?</span><select class="fi" id="sit-pertenencias" style="width:5rem;font-size:.72rem;padding:.22rem .35rem" onchange="toggleSit('pertenencias')"><option value="no">No</option><option value="si">Sí</option></select></div><div id="sit-pertenencias-notes" style="display:none;margin-top:.35rem"><div class="fg" style="margin-bottom:.25rem"><label class="fl">Tipo de pertenencia</label><select class="fi" id="sit-per-tipo" style="font-size:.72rem"><option value="">Seleccionar...</option><option value="Ropa">Ropa</option><option value="Documento">Documento</option><option value="Dinero">Dinero</option><option value="Electrónico">Electrónico</option><option value="Otro">Otro</option></select></div><div class="fg" style="margin-bottom:.25rem"><label class="fl">Detalle</label><input class="fi" id="sit-per-detalle" placeholder="Ej: cargador, pasaporte..."></div><div class="fg" style="margin-bottom:.25rem"><label class="fl">Lugar donde se encontró</label><input class="fi" id="sit-per-lugar" placeholder="Ej: clóset, bajo la cama..."></div><div class="fg" style="margin-bottom:.25rem"><label class="fl">Acción realizada</label><select class="fi" id="sit-per-accion" style="font-size:.72rem"><option value="">Seleccionar...</option><option value="Se dejó en el departamento">Se dejó en el departamento</option><option value="Se guardó en recepción / bodega">Se guardó en recepción / bodega</option><option value="Se informó al administrador">Se informó al administrador</option><option value="Se informó al huésped">Se informó al huésped</option></select></div><div class="fg" style="margin:0"><label class="fl">Nota</label><textarea class="ft" id="sit-per-nota" placeholder="Observaciones adicionales..." style="height:2.4rem;font-size:.72rem;margin:0"></textarea></div></div></div>
           <div style="background:#f8f8f8;border:1px solid rgba(0,0,0,.07);border-radius:.4rem;padding:.5rem .6rem"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:.74rem;color:var(--ink)">¿Pago en efectivo acordado?</span><select class="fi" id="sit-dinero" style="width:5rem;font-size:.72rem;padding:.22rem .35rem" onchange="toggleSit('dinero')"><option value="no">No</option><option value="si">Sí</option></select></div><div id="sit-dinero-notes" style="display:none;margin-top:.35rem"><div class="form-row" style="margin-bottom:.25rem"><div class="fg" style="margin:0"><label class="fl">Monto esperado</label><input class="fi" id="sit-din-monto-esp" placeholder="Ej: 5000"></div><div class="fg" style="margin:0"><label class="fl">Moneda</label><select class="fi" id="sit-din-moneda" style="font-size:.72rem"><option value="CLP">CLP</option><option value="USD">USD</option><option value="EUR">EUR</option><option value="Otra">Otra</option></select></div></div><div class="fg" style="margin-bottom:.25rem"><label class="fl">Lugar acordado</label><input class="fi" id="sit-din-lugar" placeholder="Ej: sobre la mesa..."></div><div class="fg" style="margin-bottom:.25rem"><label class="fl">Estado verificación</label><select class="fi" id="sit-din-estado-verif" style="font-size:.72rem"><option value="pendiente">Pendiente</option><option value="encontrado">Encontrado</option><option value="no_encontrado">No encontrado</option><option value="diferencia_monto">Diferencia de monto</option><option value="reportado_admin">Reportado a administración</option></select></div><div class="fg" style="margin-bottom:.25rem"><label class="fl">Monto encontrado</label><input class="fi" id="sit-din-monto-enc" placeholder="Ej: 4800"></div><div class="fg" style="margin:0"><label class="fl">Nota</label><textarea class="ft" id="sit-din-nota" placeholder="Observaciones..." style="height:2.4rem;font-size:.72rem;margin:0"></textarea></div></div></div>
@@ -2505,7 +2506,7 @@ const MESES_DATA=[
 ];
 
 let CU=null,RES=[],FLT='all',fichas=0,EDIT_RES_ID=null,EXT_BLOCKS=[],RECOVERY_TOKEN=null;
-let SV_RES=[],REPORTE_CTX=null; // Servicios: reservas cargadas y contexto activo para el reporte
+let SV_RES=[],REPORTE_CTX=null,REPORTE_MANT_MODE=false; // Servicios: reservas cargadas y contexto activo para el reporte
 let SV_INS=[],REPONER_CTX=null; // Servicios: insumos cargados y contexto activo para reponer
 let OPS_REPORTS=[],EDIT_OPS_CTX=null; // Admin: reportes operaciones cargados y contexto activo para editar
 let calY=new Date().getFullYear(),calM=new Date().getMonth();
@@ -2711,8 +2712,8 @@ async function loadOpsReports(){
   const rows=Array.isArray(data)?data.filter(r=>r.checklist?.tipo!=='payment_request'&&r.checklist?.tipo!=='owner_note'):[];
   OPS_REPORTS=rows;
   if(!rows.length){list.innerHTML='<div class="empty" style="padding:1.5rem 0">Sin reportes registrados.</div>';return;}
-  const efLabel=v=>({en_proceso:'En proceso',listo:'Listo',con_observaciones:'Con observaciones',con_danos:'Con daños / incidencia',good:'Buen estado',issues:'Con observaciones',damage:'Con daños'}[v]||v||'—');
-  const efCol=v=>({listo:'#2a7a3b',en_proceso:'#a07000',con_observaciones:'#d97706',con_danos:'#c0392b',good:'#2a7a3b',issues:'#d97706',damage:'#c0392b'}[v]||'var(--muted)');
+  const efLabel=v=>({en_proceso:'En proceso',listo:'Listo',con_observaciones:'Con observaciones',con_danos:'Con daños / incidencia',good:'Buen estado',issues:'Con observaciones',damage:'Con daños',pendiente_lavanderia:'Pendiente lavandería',pendiente_revision:'Pendiente revisión',operativo:'Departamento operativo',cerrado:'Cerrado'}[v]||v||'—');
+  const efCol=v=>({listo:'#2a7a3b',en_proceso:'#a07000',con_observaciones:'#d97706',con_danos:'#c0392b',good:'#2a7a3b',issues:'#d97706',damage:'#c0392b',pendiente_lavanderia:'#7c3aed',pendiente_revision:'#d97706',operativo:'#2a7a3b',cerrado:'#888'}[v]||'var(--muted)');
   const sitTags=s=>{
     if(!s)return '<span style="font-size:.63rem;color:var(--muted)">Ninguna</span>';
     const t=[];
@@ -2730,6 +2731,9 @@ async function loadOpsReports(){
     const elbl=efLabel(ef);
     const ecol=efCol(ef);
     const fechaReg=r.created_at?new Date(r.created_at).toLocaleString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+    const isMantObs=cl.tipo==='maintenance_observation';
+    const maintAlert=(isMantObs&&ef==='operativo')?`<div style="margin:.45rem 0 .1rem;padding:.35rem .65rem;background:#ecfdf5;border:1px solid #6ee7b733;border-left:3px solid #2a7a3b;border-radius:.35rem;font-size:.67rem;color:#166534;display:flex;align-items:center;gap:.4rem"><span>🟢</span><span><strong>Departamento operativo</strong> · Revisar desbloqueo de ${cl.check_in?fmtD(cl.check_in):'?'} → ${cl.check_out?fmtD(cl.check_out):'?'}</span></div>`:'';
+    const notesSnip=(isMantObs&&r.notes)?`<div style="font-size:.67rem;margin:.35rem 0 .1rem;padding:.32rem .55rem;background:#f9f9f9;border-radius:.3rem;color:var(--ink)"><span style="color:var(--muted)">Obs: </span>${r.notes}</div>`:'';
     return `<div style="border:1px solid rgba(0,0,0,.08);border-radius:.45rem;padding:.75rem .9rem;margin-bottom:.55rem;background:#fff">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem">
         <div>
@@ -2750,7 +2754,8 @@ async function loadOpsReports(){
         <div><span style="color:var(--muted)">Hora inicio: </span>${cl.hora_ingreso||'—'}</div>
         <div><span style="color:var(--muted)">Hora término: </span>${cl.hora_salida||'—'}</div>
       </div>
-      <div style="font-size:.65rem"><span style="color:var(--muted)">Situaciones: </span>${sitTags(cl.situaciones)}</div>
+      ${isMantObs?'':`<div style="font-size:.65rem"><span style="color:var(--muted)">Situaciones: </span>${sitTags(cl.situaciones)}</div>`}
+      ${notesSnip}${maintAlert}
       <div style="font-size:.54rem;color:var(--muted);margin-top:.35rem;border-top:1px solid rgba(0,0,0,.05);padding-top:.3rem">${fechaReg}</div>
     </div>`;
   }).join('');
@@ -2762,8 +2767,8 @@ function openDetalleReporte(idx){
   const cl=r.checklist||{};
   const s=cl.situaciones||{};
   const ef=cl.estado_final||cl.estado||'';
-  const efLabel=v=>({en_proceso:'En proceso',listo:'Listo',con_observaciones:'Con observaciones',con_danos:'Con daños / incidencia',good:'Buen estado',issues:'Con observaciones',damage:'Con daños'}[v]||v||'—');
-  const efCol=v=>({listo:'#2a7a3b',en_proceso:'#a07000',con_observaciones:'#d97706',con_danos:'#c0392b',good:'#2a7a3b',issues:'#d97706',damage:'#c0392b'}[v]||'var(--muted)');
+  const efLabel=v=>({en_proceso:'En proceso',listo:'Listo',con_observaciones:'Con observaciones',con_danos:'Con daños / incidencia',good:'Buen estado',issues:'Con observaciones',damage:'Con daños',pendiente_lavanderia:'Pendiente lavandería',pendiente_revision:'Pendiente revisión',operativo:'Departamento operativo',cerrado:'Cerrado'}[v]||v||'—');
+  const efCol=v=>({listo:'#2a7a3b',en_proceso:'#a07000',con_observaciones:'#d97706',con_danos:'#c0392b',good:'#2a7a3b',issues:'#d97706',damage:'#c0392b',pendiente_lavanderia:'#7c3aed',pendiente_revision:'#d97706',operativo:'#2a7a3b',cerrado:'#888'}[v]||'var(--muted)');
   const row=(lbl,val)=>val?`<div style="font-size:.7rem;margin-top:.2rem"><span style="color:var(--muted)">${lbl}: </span>${val}</div>`:'';
   const evLabel=v=>({pendiente:'Pendiente',encontrado:'Encontrado',no_encontrado:'No encontrado',diferencia_monto:'Diferencia de monto',reportado_admin:'Reportado a administración'}[v]||v||'');
   const gLabel=v=>({leve:'Leve',media:'Media',alta:'Alta'}[v]||v||'');
@@ -6103,7 +6108,7 @@ ${(d.delMes||[]).length?(d.delMes||[]).map(r=>`<div class="res-row"><div><div cl
 // ── SERVICIOS ──
 // Estado operacional para lista de staff — NO afecta vista admin
 function svOpStatus(x,hoy){
-  if(['mantencion','bloqueada_admin'].includes(x.status))return x.status;
+  if(['mantencion','bloqueada_admin','mantenimiento'].includes(x.status))return x.status;
   if(x.check_out<hoy)return'salida_reciente';
   if(x.check_in<=hoy&&x.check_out>hoy)return'huesped_alojado';
   if(x.check_out===hoy)return'salida_hoy';
@@ -6128,7 +6133,7 @@ async function loadServicios(){
     r=Array.isArray(data)?data:[];
   }
   SV_RES=r;
-  const svBtnLbl=os=>['salida_reciente','salida_hoy','huesped_alojado'].includes(os)?'Reporte check-out':['bloqueada_admin','mantencion'].includes(os)?'Registrar observación':'Preparar ingreso';
+  const svBtnLbl=os=>['salida_reciente','salida_hoy','huesped_alojado'].includes(os)?'Reporte check-out':['bloqueada_admin','mantencion','mantenimiento'].includes(os)?'Registrar observación':'Preparar ingreso';
   const repBtn=document.getElementById('sv-reporte-btn');
   if(repBtn)repBtn.style.display=CU?.role==='admin'?'':'none';
   document.getElementById('sv-tbody').innerHTML=r.length?r.map((x,i)=>{const os=svOpStatus(x,hoy);return`<tr><td><strong>${x.guest_name||'—'}</strong></td><td>${fmtD(x.check_in)}</td><td>${fmtD(x.check_out)}</td><td>${x.nights||calcN(x.check_in,x.check_out)}</td><td>${platBadge(x.platform)}</td><td>${stBadge(os)}</td><td><button class="btn btn-ghost btn-xs" onclick="openReporte(${i})">${svBtnLbl(os)}</button></td></tr>`;}).join(''):'<tr><td colspan="7"><div class="empty">Sin reservas próximas</div></td></tr>';
@@ -6241,6 +6246,18 @@ async function solicitarPago(){
 function openReporte(idx){
   // Si se pasa un índice válido, carga el contexto de la reserva desde SV_RES
   REPORTE_CTX=(typeof idx==='number'&&idx>=0&&SV_RES[idx])?SV_RES[idx]:null;
+  // Detectar modo mantención vs. reporte normal
+  const _rHoy=new Date().toLocaleDateString('en-CA',{timeZone:'America/Santiago'});
+  const _rOs=svOpStatus(REPORTE_CTX,_rHoy);
+  REPORTE_MANT_MODE=REPORTE_CTX?(['bloqueada_admin','mantencion','mantenimiento'].includes(_rOs)||REPORTE_CTX.platform==='Mantención'):false;
+  // Actualizar título e mostrar/ocultar grupos de campos
+  const _rTitle=document.getElementById('rep-modal-title');
+  if(_rTitle)_rTitle.textContent=REPORTE_MANT_MODE?'Observación de Mantención':'Reporte de Operaciones';
+  const _rShow=v=>{const el=document.getElementById(v);if(el)el.style.display='';};
+  const _rHide=v=>{const el=document.getElementById(v);if(el)el.style.display='none';};
+  if(REPORTE_MANT_MODE){_rHide('rep-grp-tipo');_rHide('rep-grp-horas');_rHide('rep-grp-estado');_rHide('rep-grp-situaciones');_rShow('rep-grp-mant-estado');}
+  else{_rShow('rep-grp-tipo');_rShow('rep-grp-horas');_rShow('rep-grp-estado');_rShow('rep-grp-situaciones');_rHide('rep-grp-mant-estado');}
+  const _rMantEst=document.getElementById('rep-mant-estado');if(_rMantEst)_rMantEst.value='en_proceso';
   // Resetear campos originales
   const tipoEl=document.getElementById('rep-tipo');
   const estadoEl=document.getElementById('rep-estado');
@@ -6319,8 +6336,8 @@ async function saveReporte(){
     notes:document.getElementById('rep-notes').value||'',
     created_by:CU?.name||CU?.email||'Servicios',
     checklist:{
-      tipo:document.getElementById('rep-tipo')?.value||'checkout',
-      estado_final:document.getElementById('rep-estado')?.value||'en_proceso',
+      tipo:REPORTE_MANT_MODE?'maintenance_observation':(document.getElementById('rep-tipo')?.value||'checkout'),
+      estado_final:REPORTE_MANT_MODE?(document.getElementById('rep-mant-estado')?.value||'en_proceso'):(document.getElementById('rep-estado')?.value||'en_proceso'),
       fecha_operacion:document.getElementById('rep-fecha')?.value||null,
       hora_ingreso:document.getElementById('rep-hora-in')?.value||null,
       hora_salida:document.getElementById('rep-hora-out')?.value||null,
