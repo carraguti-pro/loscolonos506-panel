@@ -1391,14 +1391,8 @@ tr.historico-row:hover td{opacity:.82}
       </div>
       <div>
         <div class="card" style="margin-bottom:.9rem">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.7rem">
-            <div style="font-family:'Cormorant Garamond',serif;font-size:.95rem">📦 Insumos</div>
-            <button class="btn btn-ghost btn-sm" onclick="openModal('m-insumo')">+ Agregar</button>
-          </div>
-          <div id="sv-insumos"><div class="empty"><span class="spin"></span></div></div>
-        </div>
-        <div class="card">
-          <div style="font-family:'Cormorant Garamond',serif;font-size:.95rem;margin-bottom:.7rem">💰 Resumen de Pago</div>
+          <div id="sv-pago-titulo" style="font-family:'Cormorant Garamond',serif;font-size:.95rem;margin-bottom:.35rem;line-height:1.35">💰 Pago Operación</div>
+          <div style="font-size:.6rem;color:var(--muted);margin-bottom:.7rem">Usa esta sección para solicitar el pago de la limpieza, revisión o mantención asociada a esta operación. No usar para compras o reembolsos.</div>
           <div class="fin-row-item"><span class="fin-row-lbl">Honorario Base</span><span class="fin-val">$35.000</span></div>
           <div class="fin-row-item"><span class="fin-row-lbl">Fichas Lavandería</span>
             <div style="display:flex;align-items:center;gap:.4rem">
@@ -1411,10 +1405,17 @@ tr.historico-row:hover td{opacity:.82}
           <div id="sv-pago-ctx" style="display:none;font-size:.62rem;background:#f0f4ff;border:1px solid #c7d5f5;border-radius:.35rem;padding:.3rem .55rem;margin:.35rem 0 .25rem;color:#1A468C"></div>
           <button class="btn btn-ink" style="width:100%;margin-top:.6rem" onclick="solicitarPago()">Solicitar pago de operación</button>
         </div>
-        <div class="card" style="margin-top:.9rem">
+        <div class="card" style="margin-bottom:.9rem">
           <div style="font-family:'Cormorant Garamond',serif;font-size:.9rem;margin-bottom:.4rem">📋 Gastos y Reembolsos</div>
-          <div style="font-size:.6rem;color:var(--muted);margin-bottom:.65rem">Insumos, técnicos, mantención, transporte — sin reserva asociada.</div>
+          <div style="font-size:.6rem;color:var(--muted);margin-bottom:.65rem">Usa esta sección solo para compras, insumos, transporte, técnicos u otros gastos pagados aparte. Adjunta respaldo si corresponde.</div>
           <button class="btn btn-ghost" style="width:100%;font-size:.72rem" onclick="openGastoOp()">+ Solicitar gasto / reembolso operativo</button>
+        </div>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.7rem">
+            <div style="font-family:'Cormorant Garamond',serif;font-size:.95rem">📦 Insumos</div>
+            <button class="btn btn-ghost btn-sm" onclick="openModal('m-insumo')">+ Agregar</button>
+          </div>
+          <div id="sv-insumos"><div class="empty"><span class="spin"></span></div></div>
         </div>
       </div>
     </div>
@@ -6141,6 +6142,7 @@ async function loadServicios(){
   SV_INS=Array.isArray(ins)?ins:[];
   document.getElementById('sv-insumos').innerHTML=SV_INS.length?SV_INS.map((i,idx)=>insCard(i,idx)).join(''):'<div class="empty" style="padding:1rem">Sin insumos<br><button class="btn btn-ghost btn-sm" style="margin-top:.5rem" onclick="openModal(\'m-insumo\')">+ Agregar</button></div>';
   adjF(0);
+  svUpdatePagoTitle();
   loadOwnerNotes();
 }
 // ── Notas internas del propietario ─────────────────────────────────────
@@ -6204,6 +6206,25 @@ function resetChk(){
   const lbl=document.getElementById('chk-pct');if(lbl)lbl.textContent='0% completado';
 }
 function adjF(d){fichas=Math.max(0,fichas+d);const el=document.getElementById('f-count');if(el)el.textContent=fichas;const tot=document.getElementById('sv-total');if(tot)tot.textContent='$'+(35000+fichas*1500).toLocaleString('es-CL');}
+function svUpdatePagoTitle(){
+  const el=document.getElementById('sv-pago-titulo');
+  if(!el)return;
+  const todayLocale=new Date().toLocaleDateString('es-CL',{day:'2-digit',month:'2-digit',timeZone:'America/Santiago'});
+  if(!REPORTE_CTX){el.textContent='💰 Pago Operación · '+todayLocale;return;}
+  const ctx=REPORTE_CTX;
+  const _hoy=new Date().toLocaleDateString('en-CA',{timeZone:'America/Santiago'});
+  const os=svOpStatus(ctx,_hoy);
+  const isMaint=['bloqueada_admin','mantencion','mantenimiento'].includes(os)||ctx.platform==='Mantención';
+  let tipoTag;
+  if(isMaint){
+    const nm=ctx.guest_name||'';
+    const postIdx=nm.toLowerCase().lastIndexOf(' post ');
+    tipoTag=postIdx>=0?'Mantención post '+nm.slice(postIdx+6):'Mantención · '+nm;
+  }else{
+    tipoTag='Limpieza post '+(ctx.guest_name||'huésped');
+  }
+  el.textContent='💰 Pago Operación · '+todayLocale+' · '+tipoTag;
+}
 async function solicitarPago(){
   // Guard: requiere contexto de reserva activa
   if(!REPORTE_CTX||!REPORTE_CTX.id){
@@ -6307,6 +6328,7 @@ function openReporte(idx){
       pagoCtxEl.style.display='';
     }else{pagoCtxEl.textContent='';pagoCtxEl.style.display='none';}
   }
+  svUpdatePagoTitle();
   openModal('m-reporte');
 }
 async function saveReporte(){
