@@ -1392,7 +1392,8 @@ tr.historico-row:hover td{opacity:.82}
       <div>
         <div class="card" style="margin-bottom:.9rem">
           <div style="font-family:'Cormorant Garamond',serif;font-size:.95rem;margin-bottom:.35rem">💰 Pago Operación</div>
-          <div style="font-size:.6rem;color:var(--muted);margin-bottom:.7rem">Corresponde al pago por limpieza/revisión/operación asociada a un huésped. No usar para compras o reembolsos.</div>
+          <div style="font-size:.6rem;color:var(--muted);margin-bottom:.35rem">Corresponde al pago por limpieza/revisión/operación asociada a un huésped. No usar para compras o reembolsos.</div>
+          <div id="sv-pago-contexto" style="font-size:.62rem;color:var(--muted);margin-bottom:.55rem">Seleccione un reporte check-out para solicitar pago de operación.</div>
           <div id="sv-pago-mant-aviso" style="display:none;font-size:.67rem;padding:.4rem .6rem;background:#fff7ed;border:1px solid #fed7aa;border-left:3px solid #f97316;border-radius:.35rem;margin-bottom:.6rem;color:#9a3412">🔧 No aplica para tareas de mantención. Usa "Registrar observación".</div>
           <div class="fin-row-item"><span class="fin-row-lbl">Honorarios operación</span><input type="number" id="sv-honorario" class="fi" value="35000" min="0" step="1000" style="width:7rem;text-align:right;font-size:.8rem;padding:.2rem .4rem" oninput="adjF(0)"></div>
           <div class="fin-row-item"><span class="fin-row-lbl">Fichas lavandería</span>
@@ -1404,7 +1405,6 @@ tr.historico-row:hover td{opacity:.82}
           </div>
           <div class="fin-row-item"><span class="fin-row-lbl">Total operación</span><span class="fin-val" id="sv-total-op">$35.000</span></div>
           <div class="fin-total-row"><span>Total a transferir</span><span class="fin-val pos" id="sv-total">$35.000</span></div>
-          <div id="sv-pago-ctx" style="display:none;font-size:.62rem;background:#f0f4ff;border:1px solid #c7d5f5;border-radius:.35rem;padding:.3rem .55rem;margin:.35rem 0 .25rem;color:#1A468C"></div>
           <button class="btn btn-ink" id="sv-pago-btn" style="width:100%;margin-top:.6rem" onclick="solicitarPago()">Solicitar pago de operación</button>
         </div>
         <div class="card" style="margin-bottom:.9rem">
@@ -6145,6 +6145,7 @@ async function loadServicios(){
   document.getElementById('sv-insumos').innerHTML=SV_INS.length?SV_INS.map((i,idx)=>insCard(i,idx)).join(''):'<div class="empty" style="padding:1rem">Sin insumos<br><button class="btn btn-ghost btn-sm" style="margin-top:.5rem" onclick="openModal(\'m-insumo\')">+ Agregar</button></div>';
   adjF(0);
   svSetPagoMantMode(false);
+  const _pc=document.getElementById('sv-pago-contexto');if(_pc){_pc.textContent='Seleccione un reporte check-out para solicitar pago de operación.';_pc.style.color='';}
   loadOwnerNotes();
 }
 // ── Notas internas del propietario ─────────────────────────────────────
@@ -6307,13 +6308,11 @@ function openReporte(idx){
   }
   const respEl=document.getElementById('rep-responsable');
   if(respEl)respEl.textContent=CU?.name||CU?.email||'Servicios';
-  // Sincronizar indicador de reserva activa en tarjeta de pago
-  const pagoCtxEl=document.getElementById('sv-pago-ctx');
+  // Sincronizar contexto de reserva en tarjeta de pago
+  const pagoCtxEl=document.getElementById('sv-pago-contexto');
   if(pagoCtxEl){
-    if(REPORTE_CTX?.guest_name){
-      pagoCtxEl.textContent='Reserva activa: '+REPORTE_CTX.guest_name+' · '+fmtD(REPORTE_CTX.check_in)+' → '+fmtD(REPORTE_CTX.check_out);
-      pagoCtxEl.style.display='';
-    }else{pagoCtxEl.textContent='';pagoCtxEl.style.display='none';}
+    if(!REPORTE_MANT_MODE&&REPORTE_CTX?.guest_name){pagoCtxEl.textContent='Reserva: '+REPORTE_CTX.guest_name+' · Check-out: '+fmtD(REPORTE_CTX.check_out);pagoCtxEl.style.color='#1A468C';}
+    else{pagoCtxEl.textContent='Seleccione un reporte check-out para solicitar pago de operación.';pagoCtxEl.style.color='';}
   }
   svSetPagoMantMode(REPORTE_MANT_MODE);
   openModal('m-reporte');
