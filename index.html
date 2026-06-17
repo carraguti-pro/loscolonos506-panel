@@ -5520,6 +5520,20 @@ async function saveReserva(){
       };
       await sendGuestLifecycleEmail(guestForEmail,st);
     }
+    // Insertar pagos nuevos desde PAGOS_LIST (si el admin los agregó en esta edición)
+    const _pagoEdit=PAGOS_LIST.filter(p=>p.clp||p.usd);
+    if(_pagoEdit.length>0){
+      const _exPagos=await sbGet('reservation_payments',`reservation_id=eq.${EDIT_RES_ID}`);
+      const _ex=Array.isArray(_exPagos)?_exPagos:[];
+      let _pErr=0;
+      for(const p of _pagoEdit){
+        const _dup=_ex.some(e=>parseFloat(e.amount_clp||0)===parseFloat(p.clp||0)&&(e.payment_date_received||null)===(p.fecha_rec||null)&&(e.payment_status||'pendiente')===(p.status||'pendiente'));
+        if(_dup)continue;
+        const _pe=await sbPost('reservation_payments',{reservation_id:EDIT_RES_ID,payment_date_scheduled:p.fecha_prog||null,payment_date_received:p.fecha_rec||null,amount_clp:parseFloat(p.clp)||null,amount_usd:parseFloat(p.usd)||null,currency:p.currency||'CLP',payment_source:p.source||null,payment_status:p.status||'pendiente',notes:p.notes||null});
+        if(_pe.status!==201&&!_pe.ok){const _eb=await _pe.text().catch(()=>'');console.error('[Panel] editReserva pago error:',_pe.status,_eb);_pErr++;}
+      }
+      if(_pErr>0)toast('⚠️ Reserva actualizada ('+_pErr+' pago(s) con error — ver consola)','warn');
+    }
     EDIT_RES_ID=null;
     closeModal('m-reserva');
     loadReservas();loadDashboard();
