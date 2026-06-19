@@ -1496,7 +1496,7 @@ tr.historico-row:hover td{opacity:.82}
     </div>
     <div class="modal-ft">
       <button class="btn btn-ghost" onclick="closeModal('m-gasto-op')">Cancelar</button>
-      <button class="btn btn-ink" onclick="saveGastoOp()">Registrar gasto</button>
+      <button class="btn btn-ink" id="sv-gasto-op-btn" onclick="saveGastoOp()">Registrar gasto</button>
     </div>
   </div>
 </div>
@@ -2390,7 +2390,7 @@ tr.historico-row:hover td{opacity:.82}
         <div style="font-size:.58rem;color:var(--muted);margin-top:.2rem">Foto o PDF · máximo 8 MB</div>
       </div>
     </div>
-    <div class="modal-ft"><button class="btn btn-ghost" onclick="closeModal('m-reporte')">Cancelar</button><button class="btn btn-ink" onclick="saveReporte()">Guardar</button></div>
+    <div class="modal-ft"><button class="btn btn-ghost" onclick="closeModal('m-reporte')">Cancelar</button><button class="btn btn-ink" id="sv-reporte-save-btn" onclick="saveReporte()">Guardar</button></div>
   </div>
 </div>
 <div class="overlay" id="m-insumo">
@@ -2509,6 +2509,7 @@ const MESES_DATA=[
 
 let CU=null,RES=[],FLT='all',fichas=0,EDIT_RES_ID=null,EXT_BLOCKS=[],RECOVERY_TOKEN=null;
 let SV_RES=[],REPORTE_CTX=null,REPORTE_MANT_MODE=false; // Servicios: reservas cargadas y contexto activo para el reporte
+let _svPagoLock=false,_svReporteLock=false,_svGastoOpLock=false;
 let SV_INS=[],REPONER_CTX=null; // Servicios: insumos cargados y contexto activo para reponer
 let OPS_REPORTS=[],EDIT_OPS_CTX=null; // Admin: reportes operaciones cargados y contexto activo para editar
 let calY=new Date().getFullYear(),calM=new Date().getMonth();
@@ -6236,42 +6237,52 @@ function svSetPagoMantMode(isMaint){
   const btn=document.getElementById('sv-pago-btn');if(btn){btn.disabled=isMaint;btn.style.opacity=isMaint?'.4':'';}
 }
 async function solicitarPago(){
-  // Guard: requiere contexto de reserva activa
-  if(!REPORTE_CTX||!REPORTE_CTX.id){
-    toast('⚠ Debe seleccionar una reserva antes de solicitar pago de operación.','err');
-    return;
-  }
-  const HONORARIO_BASE=parseInt(document.getElementById('sv-honorario')?.value)||35000,VALOR_FICHA=1500;
-  const total=HONORARIO_BASE+fichas*VALOR_FICHA;
-  const concepto='Pago de operación · '+(REPORTE_CTX.guest_name||'Huésped');
-  const payload={
-    notes:concepto+' · '+(CU?.name||'Servicios'),
-    created_by:CU?.name||CU?.email||'Servicios',
-    reservation_id:REPORTE_CTX.id,
-    checklist:{
-      tipo:'payment_request',
-      payment_type:'operacion',
-      subtipo:'operacion',
-      estado:'pendiente',
-      concepto,
-      honorario_base:HONORARIO_BASE,
-      fichas_lavanderia:fichas,
-      valor_ficha:VALOR_FICHA,
-      total_solicitado:total,
-      created_from:'servicios',
-      guest_name:REPORTE_CTX.guest_name||null,
-      check_in:REPORTE_CTX.check_in||null,
-      check_out:REPORTE_CTX.check_out||null,
-      responsable:CU?.name||CU?.email||'Servicios',
-      solicitado_por:CU?.name||CU?.email||'Servicios'
+  if(_svPagoLock)return;
+  _svPagoLock=true;
+  const _btn=document.getElementById('sv-pago-btn');
+  const _btxt=_btn?.textContent;
+  if(_btn){_btn.disabled=true;_btn.textContent='Procesando…';}
+  try{
+    // Guard: requiere contexto de reserva activa
+    if(!REPORTE_CTX||!REPORTE_CTX.id){
+      toast('⚠ Debe seleccionar una reserva antes de solicitar pago de operación.','err');
+      return;
     }
-  };
-  const r=await sbPost('checkout_reports',payload);
-  if(r.ok){
-    toast('✅ Solicitud enviada · $'+total.toLocaleString('es-CL'),'ok');
-    fichas=0;adjF(0);
-  }else{
-    toast('Error al enviar solicitud de pago','err');
+    const HONORARIO_BASE=parseInt(document.getElementById('sv-honorario')?.value)||35000,VALOR_FICHA=1500;
+    const total=HONORARIO_BASE+fichas*VALOR_FICHA;
+    const concepto='Pago de operación · '+(REPORTE_CTX.guest_name||'Huésped');
+    const payload={
+      notes:concepto+' · '+(CU?.name||'Servicios'),
+      created_by:CU?.name||CU?.email||'Servicios',
+      reservation_id:REPORTE_CTX.id,
+      checklist:{
+        tipo:'payment_request',
+        payment_type:'operacion',
+        subtipo:'operacion',
+        estado:'pendiente',
+        concepto,
+        honorario_base:HONORARIO_BASE,
+        fichas_lavanderia:fichas,
+        valor_ficha:VALOR_FICHA,
+        total_solicitado:total,
+        created_from:'servicios',
+        guest_name:REPORTE_CTX.guest_name||null,
+        check_in:REPORTE_CTX.check_in||null,
+        check_out:REPORTE_CTX.check_out||null,
+        responsable:CU?.name||CU?.email||'Servicios',
+        solicitado_por:CU?.name||CU?.email||'Servicios'
+      }
+    };
+    const r=await sbPost('checkout_reports',payload);
+    if(r.ok){
+      toast('✅ Solicitud enviada · $'+total.toLocaleString('es-CL'),'ok');
+      fichas=0;adjF(0);
+    }else{
+      toast('Error al enviar solicitud de pago','err');
+    }
+  }finally{
+    _svPagoLock=false;
+    if(_btn){_btn.disabled=false;_btn.textContent=_btxt;}
   }
 }
 function openReporte(idx){
@@ -6340,6 +6351,11 @@ function openReporte(idx){
   openModal('m-reporte');
 }
 async function saveReporte(){
+  if(_svReporteLock)return;
+  _svReporteLock=true;
+  const _btn=document.getElementById('sv-reporte-save-btn');
+  const _btxt=_btn?.textContent;
+  if(_btn){_btn.disabled=true;_btn.textContent='Procesando…';}
   // ── Paso 1: UUID client-side ──
   const rowId=crypto.randomUUID();
   // ── Paso 2: Upload evidencia (opcional, antes del INSERT) ──
@@ -6385,13 +6401,18 @@ async function saveReporte(){
   };
   if(REPORTE_CTX?.id)payload.reservation_id=REPORTE_CTX.id;
   // ── Paso 4: INSERT único (sbPost = Prefer:return=minimal, solo necesita INSERT) ──
-  const r=await sbPost('checkout_reports',payload);
-  if(r.status===201||r.ok){
-    if(uploadFailed)toast('⚠ Reporte guardado sin evidencia','err');
-    else if(uploadedPath)toast('✅ Reporte guardado con evidencia','ok');
-    else toast('✅ Reporte guardado','ok');
-    closeModal('m-reporte');
-  }else{toast('Error al guardar reporte — intente nuevamente','err');}
+  try{
+    const r=await sbPost('checkout_reports',payload);
+    if(r.status===201||r.ok){
+      if(uploadFailed)toast('⚠ Reporte guardado sin evidencia','err');
+      else if(uploadedPath)toast('✅ Reporte guardado con evidencia','ok');
+      else toast('✅ Reporte guardado','ok');
+      closeModal('m-reporte');
+    }else{toast('Error al guardar reporte — intente nuevamente','err');}
+  }finally{
+    _svReporteLock=false;
+    if(_btn){_btn.disabled=false;_btn.textContent=_btxt;}
+  }
 }
 function onReporteFileChange(){
   const fileEl=document.getElementById('rep-archivo');
@@ -6481,6 +6502,12 @@ async function uploadEvidenciaGasto(file,reportId,contexto){
   return path;
 }
 async function saveGastoOp(){
+  if(_svGastoOpLock)return;
+  _svGastoOpLock=true;
+  const _btn=document.getElementById('sv-gasto-op-btn');
+  const _btxt=_btn?.textContent;
+  if(_btn){_btn.disabled=true;_btn.textContent='Procesando…';}
+  try{
   // ── Validaciones de formulario ──
   const concepto=(document.getElementById('go-concepto')?.value||'').trim();
   if(!concepto){toast('Ingrese el concepto del gasto','err');return;}
@@ -6561,6 +6588,10 @@ async function saveGastoOp(){
   else if(uploadedPath){toast('✅ Gasto registrado con evidencia · '+montoFmt,'ok');}
   else{toast('✅ Gasto registrado · '+(tipo_respaldo==='sin_respaldo'?'sin respaldo':'respaldo pendiente de adjuntar'),'ok');}
   closeModal('m-gasto-op');
+  }finally{
+    _svGastoOpLock=false;
+    if(_btn){_btn.disabled=false;_btn.textContent=_btxt;}
+  }
 }
 // ── VER EVIDENCIA GASTO (Admin) ──────────────────────────────
 const CTXLBL={boleta:'Boleta / Factura',comprobante:'Comprobante de transferencia',foto_compra:'Foto de compra / producto',general:'Fotografía / Evidencia general'};
