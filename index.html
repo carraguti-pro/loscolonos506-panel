@@ -5819,10 +5819,11 @@ async function loadFinances(){
   const gfT=f.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
   const exT=e.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
   const ACTIVE_ST=new Set(['confirmada','paid']);
-  const rFin=r.filter(x=>ACTIVE_ST.has(x.status));
+  const TEST_RE=/test|prueba|dummy/i;
+  const rFin=r.filter(x=>ACTIVE_ST.has(x.status)&&!TEST_RE.test([x.guest_name,x.source,x.notes,x.booking_code].filter(Boolean).join(' ')));
   const tbody=document.getElementById('fin-tbody');
   if(tbody){
-    if(!rFin.length){tbody.innerHTML=`<tr><td colspan="7"><div class="empty">Sin reservas para ${NOM[mes]} ${año}</div></td></tr>`;}
+    if(!rFin.length){tbody.innerHTML=`<tr><td colspan="7"><div class="empty">Sin reservas activas para ${NOM[mes]} ${año}</div></td></tr>`;}
     else{tbody.innerHTML=rFin.map(x=>{const com=COM_REALES[x.check_in]||0;return`<tr class="data-row"><td><strong>${x.guest_name||'—'}</strong></td><td>${fmtD(x.check_in)}</td><td>${x.nights||calcN(x.check_in,x.check_out)}</td><td>${platBadge(x.platform)}</td><td><strong>$${parseFloat(x.total_usd||0).toFixed(2)}</strong></td><td style="color:var(--danger)">-$${com.toLocaleString('es-CL')}</td><td>${stBadge(x.status)}</td></tr>`;}).join('');}
   }
   document.getElementById('fin-gf-wrap').innerHTML=f.length?f.map(g=>`<div class="fin-row-item"><span class="fin-row-lbl">${g.name||g.description||'—'}</span><span class="fin-val neg">-$${parseFloat(g.amount||0).toLocaleString('es-CL')}</span></div>`).join('')+`<div class="fin-total-row"><span>Total</span><span class="fin-val neg">-$${gfT.toLocaleString('es-CL')}</span></div>`:'<div class="empty">Sin gastos fijos</div>';
