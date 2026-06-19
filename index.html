@@ -1751,13 +1751,13 @@ tr.historico-row:hover td{opacity:.82}
             <div class="fin-subtitle">Control de caja · Ingresos · Gastos · Resultado del período</div>
           </div>
           <div class="fin-controls">
-            <select class="fs" id="pe-mes" style="width:112px;font-size:.7rem" onchange="loadGastosPeriodo();loadFinanzasPeriodo();loadCajaResultados()">
+            <select class="fs" id="pe-mes" style="width:112px;font-size:.7rem" onchange="loadGastosPeriodo();loadFinanzasPeriodo();loadCajaResultados();loadFinances()">
               <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
               <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
               <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
               <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
             </select>
-            <input type="number" class="fi" id="pe-año" min="2020" max="2035" style="width:66px;font-size:.7rem" onchange="loadGastosPeriodo();loadFinanzasPeriodo();loadCajaResultados()">
+            <input type="number" class="fi" id="pe-año" min="2020" max="2035" style="width:66px;font-size:.7rem" onchange="loadGastosPeriodo();loadFinanzasPeriodo();loadCajaResultados();loadFinances()">
             <button class="btn btn-gold btn-sm" onclick="abrirGasto()">+ Registrar gasto</button>
           </div>
         </div>
@@ -1831,9 +1831,8 @@ tr.historico-row:hover td{opacity:.82}
           <!-- IZQUIERDA: Reservas registradas -->
           <div>
             <div class="fin-section-hdr">
-              <div class="fin-section-title">Reservas registradas <span style="font-weight:300;color:var(--muted);font-size:.9em">· vista general</span></div>
+              <div class="fin-section-title">Reservas registradas <span style="font-weight:300;color:var(--muted);font-size:.9em" id="fin-res-periodo"></span></div>
             </div>
-            <div class="fin-note">Vista general — pendiente filtro mensual definitivo</div>
             <div class="fin-table-wrap">
               <div class="fin-table-scroll">
                 <table>
@@ -5806,18 +5805,24 @@ function renderOpsSummary(){
 
 // ── FINANZAS ──
 async function loadFinances(){
-  const[res,gf,ex]=await Promise.all([sbGet('reservations','order=check_in.desc&limit=200'),sbGet('fixed_costs','limit=50'),sbGet('extra_expenses','limit=100')]);
+  const mes=parseInt(document.getElementById('pe-mes')?.value)||new Date().getMonth()+1;
+  const año=parseInt(document.getElementById('pe-año')?.value)||new Date().getFullYear();
+  const pad=n=>String(n).padStart(2,'0');
+  const fechaIni=`${año}-${pad(mes)}-01`;
+  const fechaFin=`${año}-${pad(mes)}-${pad(new Date(año,mes,0).getDate())}`;
+  const NOM=['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const[res,gf,ex]=await Promise.all([sbGet('reservations',`check_in=gte.${fechaIni}&check_in=lte.${fechaFin}&order=check_in.asc`),sbGet('fixed_costs','limit=50'),sbGet('extra_expenses','limit=100')]);
   const r=Array.isArray(res)?res:[];const f=Array.isArray(gf)?gf:[];const e=Array.isArray(ex)?ex:[];
+  const periodoEl=document.getElementById('fin-res-periodo');
+  if(periodoEl)periodoEl.textContent=`· ${NOM[mes]} ${año}`;
   const totalUSD=r.filter(x=>!isCancelada(x)).reduce((s,x)=>s+(parseFloat(x.total_usd)||0),0);
   const gfT=f.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
   const exT=e.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
-  document.getElementById('fin-usd').textContent='$'+totalUSD.toLocaleString('en-US',{minimumFractionDigits:2});
-  document.getElementById('fin-clp').textContent='$'+Math.round(totalUSD*USD_CLP).toLocaleString('es-CL');
-  document.getElementById('fin-gt').textContent='$'+(gfT+exT).toLocaleString('es-CL');
-  document.getElementById('fin-tbody').innerHTML=r.slice(0,30).map(x=>{
-    const com=COM_REALES[x.check_in]||0;
-    return`<tr class="data-row"><td><strong>${x.guest_name||'—'}</strong></td><td>${fmtD(x.check_in)}</td><td>${x.nights||calcN(x.check_in,x.check_out)}</td><td>${platBadge(x.platform)}</td><td><strong>$${parseFloat(x.total_usd||0).toFixed(2)}</strong></td><td style="color:var(--danger)">-$${com.toLocaleString('es-CL')}</td><td>${stBadge(x.status)}</td></tr>`;
-  }).join('');
+  const tbody=document.getElementById('fin-tbody');
+  if(tbody){
+    if(!r.length){tbody.innerHTML=`<tr><td colspan="7"><div class="empty">Sin reservas para ${NOM[mes]} ${año}</div></td></tr>`;}
+    else{tbody.innerHTML=r.map(x=>{const com=COM_REALES[x.check_in]||0;return`<tr class="data-row"><td><strong>${x.guest_name||'—'}</strong></td><td>${fmtD(x.check_in)}</td><td>${x.nights||calcN(x.check_in,x.check_out)}</td><td>${platBadge(x.platform)}</td><td><strong>$${parseFloat(x.total_usd||0).toFixed(2)}</strong></td><td style="color:var(--danger)">-$${com.toLocaleString('es-CL')}</td><td>${stBadge(x.status)}</td></tr>`;}).join('');}
+  }
   document.getElementById('fin-gf-wrap').innerHTML=f.length?f.map(g=>`<div class="fin-row-item"><span class="fin-row-lbl">${g.name||g.description||'—'}</span><span class="fin-val neg">-$${parseFloat(g.amount||0).toLocaleString('es-CL')}</span></div>`).join('')+`<div class="fin-total-row"><span>Total</span><span class="fin-val neg">-$${gfT.toLocaleString('es-CL')}</span></div>`:'<div class="empty">Sin gastos fijos</div>';
   document.getElementById('fin-ex-wrap').innerHTML=e.length?e.slice(0,20).map(x=>`<div class="fin-row-item"><span class="fin-row-lbl">${x.description||'—'}</span><span class="fin-val neg">-$${parseFloat(x.amount||0).toLocaleString('es-CL')}</span></div>`).join(''):'<div class="empty">Sin gastos variables</div>';
 }
