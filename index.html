@@ -5818,10 +5818,12 @@ async function loadFinances(){
   const totalUSD=r.filter(x=>!isCancelada(x)).reduce((s,x)=>s+(parseFloat(x.total_usd)||0),0);
   const gfT=f.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
   const exT=e.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
+  const ACTIVE_ST=new Set(['confirmada','paid']);
+  const rFin=r.filter(x=>ACTIVE_ST.has(x.status));
   const tbody=document.getElementById('fin-tbody');
   if(tbody){
-    if(!r.length){tbody.innerHTML=`<tr><td colspan="7"><div class="empty">Sin reservas para ${NOM[mes]} ${año}</div></td></tr>`;}
-    else{tbody.innerHTML=r.map(x=>{const com=COM_REALES[x.check_in]||0;return`<tr class="data-row"><td><strong>${x.guest_name||'—'}</strong></td><td>${fmtD(x.check_in)}</td><td>${x.nights||calcN(x.check_in,x.check_out)}</td><td>${platBadge(x.platform)}</td><td><strong>$${parseFloat(x.total_usd||0).toFixed(2)}</strong></td><td style="color:var(--danger)">-$${com.toLocaleString('es-CL')}</td><td>${stBadge(x.status)}</td></tr>`;}).join('');}
+    if(!rFin.length){tbody.innerHTML=`<tr><td colspan="7"><div class="empty">Sin reservas para ${NOM[mes]} ${año}</div></td></tr>`;}
+    else{tbody.innerHTML=rFin.map(x=>{const com=COM_REALES[x.check_in]||0;return`<tr class="data-row"><td><strong>${x.guest_name||'—'}</strong></td><td>${fmtD(x.check_in)}</td><td>${x.nights||calcN(x.check_in,x.check_out)}</td><td>${platBadge(x.platform)}</td><td><strong>$${parseFloat(x.total_usd||0).toFixed(2)}</strong></td><td style="color:var(--danger)">-$${com.toLocaleString('es-CL')}</td><td>${stBadge(x.status)}</td></tr>`;}).join('');}
   }
   document.getElementById('fin-gf-wrap').innerHTML=f.length?f.map(g=>`<div class="fin-row-item"><span class="fin-row-lbl">${g.name||g.description||'—'}</span><span class="fin-val neg">-$${parseFloat(g.amount||0).toLocaleString('es-CL')}</span></div>`).join('')+`<div class="fin-total-row"><span>Total</span><span class="fin-val neg">-$${gfT.toLocaleString('es-CL')}</span></div>`:'<div class="empty">Sin gastos fijos</div>';
   document.getElementById('fin-ex-wrap').innerHTML=e.length?e.slice(0,20).map(x=>`<div class="fin-row-item"><span class="fin-row-lbl">${x.description||'—'}</span><span class="fin-val neg">-$${parseFloat(x.amount||0).toLocaleString('es-CL')}</span></div>`).join(''):'<div class="empty">Sin gastos variables</div>';
