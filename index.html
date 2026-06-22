@@ -2489,6 +2489,7 @@ const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6
 // Fields required: to_email, to_name, subject, solicitud_tipo, concepto,
 //   monto, estado, comentario_admin, revisado_por, revisado_at, property_name
 const EMAILJS_TEMPLATE_STAFF_RECEIPT='';
+const EMAILJS_TEMPLATE_ADMIN_NOTIF_PAGO='';
 // ── AUTH HEADERS ──────────────────────────────────────────────
 // CRÍTICO: sbH() se evalúa en cada llamada → siempre usa el
 // access_token del usuario autenticado, nunca la anon key como Bearer.
@@ -6275,8 +6276,30 @@ async function solicitarPago(){
     };
     const r=await sbPost('checkout_reports',payload);
     if(r.ok){
+      const fichasNotif=fichas,totalNotif=total;
       toast('✅ Solicitud enviada · $'+total.toLocaleString('es-CL'),'ok');
       fichas=0;adjF(0);
+      if(EMAILJS_TEMPLATE_ADMIN_NOTIF_PAGO){
+        try{
+          await emailjs.init('sm_0g69XAvXrigzAC');
+          await emailjs.send('service_cda9l59',EMAILJS_TEMPLATE_ADMIN_NOTIF_PAGO,{
+            to_email:'reservas@ferranpropiedades.cl',
+            staff_name:CU?.name||CU?.email||'Servicios',
+            guest_name:REPORTE_CTX.guest_name||'—',
+            check_in:REPORTE_CTX.check_in||'—',
+            check_out:REPORTE_CTX.check_out||'—',
+            fecha_solicitud:new Date().toLocaleString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}),
+            honorario:'$'+HONORARIO_BASE.toLocaleString('es-CL'),
+            fichas:fichasNotif+' × $'+VALOR_FICHA.toLocaleString('es-CL'),
+            total:'$'+totalNotif.toLocaleString('es-CL'),
+            estado:'Pendiente',
+            concepto
+          });
+        }catch(eNotif){
+          console.warn('[Panel] Admin notif email error:',eNotif);
+          toast('⚠ Solicitud creada · No se pudo notificar a admin','err');
+        }
+      }
     }else{
       toast('Error al enviar solicitud de pago','err');
     }
