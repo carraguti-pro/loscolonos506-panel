@@ -2490,6 +2490,7 @@ const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6
 //   monto, estado, comentario_admin, revisado_por, revisado_at, property_name
 const EMAILJS_TEMPLATE_STAFF_RECEIPT='';
 const EMAILJS_TEMPLATE_ADMIN_NOTIF_PAGO='';
+const ADMIN_WHATSAPP_PHONE='569XXXXXXXX'; // replace with real number e.g. '56912345678'
 // ── AUTH HEADERS ──────────────────────────────────────────────
 // CRÍTICO: sbH() se evalúa en cada llamada → siempre usa el
 // access_token del usuario autenticado, nunca la anon key como Bearer.
@@ -2921,8 +2922,12 @@ async function loadSolicitudesPago(){
       const montoHTML=partes.length?`<div style="font-size:.67rem;margin-top:.4rem;display:flex;gap:.75rem;flex-wrap:wrap;border-top:1px solid rgba(0,0,0,.05);padding-top:.35rem">${partes.join('')}</div>`:'';
       window._SOLIC_MAP=window._SOLIC_MAP||{};window._SOLIC_MAP[r.id]=cl;
       const isPaidOp=st==='pagado';
+      const isPendingOp=st==='pendiente';
+      const waOpBtn=isPendingOp
+        ?`<div style="margin-top:.35rem;padding-top:.35rem;border-top:1px solid rgba(0,0,0,.05);display:flex;gap:.5rem;flex-wrap:wrap"><button class="btn btn-ghost btn-xs" style="font-size:.6rem;padding:.18rem .55rem;color:#128C7E;border-color:#128C7E44" onclick="waAdminPagoCard('${r.id}')">💬 Avisar admin por WhatsApp</button></div>`
+        :'';
       const comprobOpDiv=cl.comprobante_pago_admin?.path
-        ?`<div style="margin-top:.35rem;padding-top:.35rem;border-top:1px solid rgba(0,0,0,.05);display:flex;gap:.5rem;flex-wrap:wrap"><button class="btn btn-ghost btn-xs" style="font-size:.6rem;padding:.18rem .55rem;color:#166534;border-color:#16653444" onclick="openComprobanteAdmin('${r.id}')">📄 Comprobante pago</button><button class="btn btn-ghost btn-xs" style="font-size:.6rem;padding:.18rem .55rem;color:#1A468C;border-color:#1A468C44" onclick="enviarEmailComprobante('${r.id}')">📧 Enviar email</button></div>`
+        ?`<div style="margin-top:.35rem;padding-top:.35rem;border-top:1px solid rgba(0,0,0,.05);display:flex;gap:.5rem;flex-wrap:wrap"><button class="btn btn-ghost btn-xs" style="font-size:.6rem;padding:.18rem .55rem;color:#166534;border-color:#16653444" onclick="openComprobanteAdmin('${r.id}')">📄 Comprobante pago</button><button class="btn btn-ghost btn-xs" style="font-size:.6rem;padding:.18rem .55rem;color:#1A468C;border-color:#1A468C44" onclick="enviarEmailComprobante('${r.id}')">📧 Enviar email</button><button class="btn btn-ghost btn-xs" style="font-size:.6rem;padding:.18rem .55rem;color:#128C7E;border-color:#128C7E44" onclick="waStaffRecibo('${r.id}')">💬 Recibo WA</button></div>`
         :(isPaidOp?`<div style="margin-top:.35rem;padding-top:.35rem;border-top:1px solid rgba(0,0,0,.05);display:flex;gap:.5rem;flex-wrap:wrap"><button class="btn btn-ghost btn-xs" style="font-size:.6rem;padding:.18rem .55rem;color:#1A468C;border-color:#1A468C44" onclick="adjuntarComprobantePago('${r.id}')">📄 Adjuntar comprobante pago</button></div>`:'');
       return cardWrap(`
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;margin-bottom:.35rem">
@@ -2936,6 +2941,7 @@ async function loadSolicitudesPago(){
           ${(cl.check_in||cl.check_out)?`<div><span style="color:var(--muted)">Check-in/out: </span>${cl.check_in?fmtD(cl.check_in):'—'} → ${cl.check_out?fmtD(cl.check_out):'—'}</div>`:''}
         </div>
         ${montoHTML}
+        ${waOpBtn}
         ${comprobOpDiv}
         ${reviewActionsHTML(r.id,cl)}`);
     }).join('');
@@ -3647,6 +3653,55 @@ async function enviarEmailComprobante(rowId){
   }
 }
 
+// ══ WHATSAPP HELPERS ═══════════════════════════════════════
+function waAdminPago(p){
+  if(!ADMIN_WHATSAPP_PHONE||ADMIN_WHATSAPP_PHONE.includes('X')){
+    toast('⚠ Número WhatsApp admin no configurado','err');return;
+  }
+  const msg='🔔 *Nueva solicitud de pago operación*\n\n'
+    +'👤 Staff: '+(p.staff_name||'—')+'\n'
+    +'🏠 Huésped: '+(p.guest_name||'—')+'\n'
+    +'📅 Check-in/out: '+(p.check_in||'—')+' → '+(p.check_out||'—')+'\n'
+    +'📝 Concepto: '+(p.concepto||'—')+'\n'
+    +'💰 Honorario: '+(p.honorario||'—')+'\n'
+    +'🧺 Fichas: '+(p.fichas||'—')+'\n'
+    +'💵 Total: '+(p.total||'—')+'\n'
+    +'📊 Estado: '+(p.estado||'Pendiente')+'\n\n'
+    +'👉 Revisar en Panel Los Colonos';
+  window.open('https://wa.me/'+ADMIN_WHATSAPP_PHONE+'?text='+encodeURIComponent(msg),'_blank');
+}
+function waAdminPagoCard(rowId){
+  const cl=window._SOLIC_MAP&&window._SOLIC_MAP[rowId];if(!cl)return;
+  waAdminPago({
+    staff_name:cl.responsable||cl.solicitado_por||'—',
+    guest_name:cl.guest_name||'—',
+    check_in:cl.check_in?fmtD(cl.check_in):'—',
+    check_out:cl.check_out?fmtD(cl.check_out):'—',
+    concepto:cl.concepto||'Pago de operación',
+    honorario:cl.honorario_base?'$'+Number(cl.honorario_base).toLocaleString('es-CL'):'—',
+    fichas:cl.fichas_lavanderia?(cl.fichas_lavanderia+' × $'+Number(cl.valor_ficha||1500).toLocaleString('es-CL')):'—',
+    total:cl.total_solicitado?'$'+Number(cl.total_solicitado).toLocaleString('es-CL'):'—',
+    estado:cl.estado||'Pendiente'
+  });
+}
+async function waStaffRecibo(rowId){
+  const cl=window._SOLIC_MAP&&window._SOLIC_MAP[rowId];if(!cl)return;
+  const crRows=await sbGet('checkout_reports',`id=eq.${rowId}&select=created_by`);
+  const createdBy=crRows&&crRows[0]?.created_by||'Staff';
+  const montoPagado=cl.monto_pagado!=null?'$'+Number(cl.monto_pagado).toLocaleString('es-CL'):'—';
+  const fechaPago=cl.fecha_pago
+    ?new Date(cl.fecha_pago+'T12:00:00').toLocaleDateString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric'})
+    :(cl.pagado_at?new Date(cl.pagado_at).toLocaleDateString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric'}):'—');
+  const msg='✅ *Pago confirmado · Los Colonos*\n\n'
+    +'Hola '+createdBy+',\n\n'
+    +'Tu pago ha sido registrado:\n'
+    +'📝 '+(cl.concepto||'Pago de operación')+'\n'
+    +'💵 Monto: '+montoPagado+'\n'
+    +'📅 Fecha pago: '+fechaPago+'\n'
+    +'💳 Pagado por: '+(cl.pagado_por||'Administración')+'\n\n'
+    +'Saludos,\nAdministración Los Colonos';
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+}
 // ══ EMAIL COMPROBANTE STAFF SOLICITUD (Phase 8B) ═══════════
 async function enviarEmailComprobanteStaffSolicitud(rowId){
   // ── Guard: template must be configured ──────────────────
@@ -6279,6 +6334,17 @@ async function solicitarPago(){
       const fichasNotif=fichas,totalNotif=total;
       toast('✅ Solicitud enviada · $'+total.toLocaleString('es-CL'),'ok');
       fichas=0;adjF(0);
+      waAdminPago({
+        staff_name:CU?.name||CU?.email||'Servicios',
+        guest_name:REPORTE_CTX.guest_name||'—',
+        check_in:REPORTE_CTX.check_in?fmtD(REPORTE_CTX.check_in):REPORTE_CTX.check_in||'—',
+        check_out:REPORTE_CTX.check_out?fmtD(REPORTE_CTX.check_out):REPORTE_CTX.check_out||'—',
+        concepto,
+        honorario:'$'+HONORARIO_BASE.toLocaleString('es-CL'),
+        fichas:fichasNotif+' × $'+VALOR_FICHA.toLocaleString('es-CL'),
+        total:'$'+totalNotif.toLocaleString('es-CL'),
+        estado:'Pendiente'
+      });
       if(EMAILJS_TEMPLATE_ADMIN_NOTIF_PAGO){
         try{
           await emailjs.init('sm_0g69XAvXrigzAC');
