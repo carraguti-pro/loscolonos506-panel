@@ -2490,7 +2490,6 @@ const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6
 //   monto, estado, comentario_admin, revisado_por, revisado_at, property_name
 const EMAILJS_TEMPLATE_STAFF_RECEIPT='';
 const EMAILJS_TEMPLATE_ADMIN_NOTIF_PAGO='';
-const ADMIN_WHATSAPP_PHONE='569XXXXXXXX'; // replace with real number e.g. '56912345678'
 // ── AUTH HEADERS ──────────────────────────────────────────────
 // CRÍTICO: sbH() se evalúa en cada llamada → siempre usa el
 // access_token del usuario autenticado, nunca la anon key como Bearer.
@@ -2924,7 +2923,7 @@ async function loadSolicitudesPago(){
       const isPaidOp=st==='pagado';
       const isPendingOp=st==='pendiente';
       const waOpBtn=isPendingOp
-        ?`<div style="margin-top:.35rem;padding-top:.35rem;border-top:1px solid rgba(0,0,0,.05);display:flex;gap:.5rem;flex-wrap:wrap"><button class="btn btn-ghost btn-xs" style="font-size:.6rem;padding:.18rem .55rem;color:#128C7E;border-color:#128C7E44" onclick="waAdminPagoCard('${r.id}')">💬 Avisar admin por WhatsApp</button></div>`
+        ?`<div style="margin-top:.35rem;padding-top:.35rem;border-top:1px solid rgba(0,0,0,.05);display:flex;gap:.5rem;flex-wrap:wrap"><button class="btn btn-ghost btn-xs" style="font-size:.6rem;padding:.18rem .55rem;color:#128C7E;border-color:#128C7E44" onclick="waAdminPagoCard('${r.id}')">💬 Compartir en grupo WhatsApp</button></div>`
         :'';
       const comprobOpDiv=cl.comprobante_pago_admin?.path
         ?`<div style="margin-top:.35rem;padding-top:.35rem;border-top:1px solid rgba(0,0,0,.05);display:flex;gap:.5rem;flex-wrap:wrap"><button class="btn btn-ghost btn-xs" style="font-size:.6rem;padding:.18rem .55rem;color:#166534;border-color:#16653444" onclick="openComprobanteAdmin('${r.id}')">📄 Comprobante pago</button><button class="btn btn-ghost btn-xs" style="font-size:.6rem;padding:.18rem .55rem;color:#1A468C;border-color:#1A468C44" onclick="enviarEmailComprobante('${r.id}')">📧 Enviar email</button><button class="btn btn-ghost btn-xs" style="font-size:.6rem;padding:.18rem .55rem;color:#128C7E;border-color:#128C7E44" onclick="waStaffRecibo('${r.id}')">💬 Recibo WA</button></div>`
@@ -3655,9 +3654,6 @@ async function enviarEmailComprobante(rowId){
 
 // ══ WHATSAPP HELPERS ═══════════════════════════════════════
 function waAdminPago(p){
-  if(!ADMIN_WHATSAPP_PHONE||ADMIN_WHATSAPP_PHONE.includes('X')){
-    toast('⚠ Número WhatsApp admin no configurado','err');return;
-  }
   const msg='🔔 *Nueva solicitud de pago operación*\n\n'
     +'👤 Staff: '+(p.staff_name||'—')+'\n'
     +'🏠 Huésped: '+(p.guest_name||'—')+'\n'
@@ -3668,7 +3664,7 @@ function waAdminPago(p){
     +'💵 Total: '+(p.total||'—')+'\n'
     +'📊 Estado: '+(p.estado||'Pendiente')+'\n\n'
     +'👉 Revisar en Panel Los Colonos';
-  window.open('https://wa.me/'+ADMIN_WHATSAPP_PHONE+'?text='+encodeURIComponent(msg),'_blank');
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
 }
 function waAdminPagoCard(rowId){
   const cl=window._SOLIC_MAP&&window._SOLIC_MAP[rowId];if(!cl)return;
