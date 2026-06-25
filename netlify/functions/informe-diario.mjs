@@ -1,8 +1,8 @@
 // Informe Operativo Diario — Netlify Scheduled Function
-// Schedule: 0 12 * * * UTC
-//   = 08:00 Chile Standard Time (CLT, UTC-4, May–Aug)
-//   = 09:00 Chile Summer Time (CLST, UTC-3, Sep–Apr)
-// To target exactly 08:00 year-round, switch to two schedules or adjust manually per season.
+// Schedule: 0 13 * * * UTC
+//   = 09:00 Chile Standard Time (CLT, UTC-4, May–Aug)
+//   = 10:00 Chile Summer Time (CLST, UTC-3, Sep–Apr)
+// To target exactly 09:00 year-round, switch to two schedules or adjust manually per season.
 //
 // Required env vars (set in Netlify dashboard — never committed):
 //   SUPABASE_URL               project URL
@@ -12,7 +12,7 @@
 //   REPORT_RECIPIENTS          comma-separated list of recipient emails
 
 export const config = {
-  schedule: '0 12 * * *'
+  schedule: '0 13 * * *'
 };
 
 const EXCLUDED_STATUSES = ['cancelled', 'cancelada', 'expirada', 'bloqueada_admin'];
@@ -116,11 +116,13 @@ function buildHtml({ today, tomorrow, checkins, checkouts, nextRow }) {
     <div style="margin-top:20px;padding:14px 16px;background:#f9fafb;border-radius:6px;font-size:13px">
       <strong>✅ Checklist operativo</strong>
       <ul style="margin:8px 0 0;padding-left:18px;color:#374151;line-height:1.7">
-        <li>☐ Habitación preparada (sábanas, toallas, amenities)</li>
-        <li>☐ Cocina limpia y equipada</li>
-        <li>☐ Check-out completado y llaves recibidas</li>
-        <li>☐ Reporte de operación enviado al panel</li>
-        <li>☐ Fichas de lavandería registradas</li>
+        <li>☐ ¿Departamento operativo?</li>
+        <li>☐ ¿Llaves disponibles en conserjería?</li>
+        <li>☐ ¿Limpieza previa confirmada para próximos ingresos?</li>
+        <li>☐ ¿Limpieza post check-out coordinada?</li>
+        <li>☐ ¿Reporte check-out pendiente?</li>
+        <li>☐ ¿Staff informado en grupo Depa?</li>
+        <li>☐ ¿Fichas de lavandería registradas si corresponde?</li>
       </ul>
     </div>`;
 
