@@ -2045,6 +2045,17 @@ tr.historico-row:hover td{opacity:.82}
 
       <!-- RESUMEN OPERACIONAL CEO -->
       <div class="page" id="page-resumen-ops">
+        <!-- ══ INFORME OPERATIVO DIARIO ══ -->
+        <div class="card" style="margin-bottom:.9rem">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.55rem;margin-bottom:.6rem">
+            <div>
+              <div class="card-title" style="margin-bottom:.1rem">📋 Informe Operativo Diario</div>
+              <div style="font-size:.56rem;color:var(--muted)">Movimientos de hoy y mañana · Depa 506-A</div>
+            </div>
+            <button id="btn-generar-informe" class="btn btn-ink btn-sm" onclick="generarInformeOperativo()">📲 Generar y compartir en Depa</button>
+          </div>
+          <div id="informe-diario-preview" style="display:none;background:#f9fafb;border:1px solid rgba(0,0,0,.08);border-radius:.4rem;padding:.7rem .85rem;font-size:.66rem;line-height:1.75;white-space:pre-line;color:var(--ink)"></div>
+        </div>
         <!-- header + period filter -->
         <div class="card" style="margin-bottom:.9rem">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.55rem;margin-bottom:.75rem">
@@ -3697,6 +3708,65 @@ async function waStaffRecibo(rowId){
     +'💳 Pagado por: '+(cl.pagado_por||'Administración')+'\n\n'
     +'Saludos,\nAdministración Los Colonos';
   window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+}
+// ══ INFORME OPERATIVO DIARIO ═══════════════════════════════
+async function generarInformeOperativo(){
+  const btn=document.getElementById('btn-generar-informe');
+  if(btn){btn.disabled=true;btn.textContent='Generando…';}
+  const CL_TZ='America/Santiago';
+  const hoy=new Date().toLocaleDateString('en-CA',{timeZone:CL_TZ});
+  const manDt=new Date(Date.now()+24*60*60*1000).toLocaleDateString('en-CA',{timeZone:CL_TZ});
+  const EXCL=new Set(['cancelled','cancelada','expirada','bloqueada_admin']);
+  const NL='\n';
+  const MESES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const DIAS=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const lbl=iso=>{const d=new Date(iso+'T12:00:00');return`${d.getDate()} ${MESES[d.getMonth()]} (${DIAS[d.getDay()]})`;};
+  try{
+    const[ciRows,coRows,nextRows]=await Promise.all([
+      sbGet('reservations',`check_in=gte.${hoy}&check_in=lte.${manDt}&status=not.in.(cancelled,cancelada,expirada,bloqueada_admin)&select=id,guest_name,check_in,check_out,nights,platform&order=check_in.asc&limit=20`),
+      sbGet('reservations',`check_out=gte.${hoy}&check_out=lte.${manDt}&status=not.in.(cancelled,cancelada,expirada,bloqueada_admin)&select=id,guest_name,check_in,check_out,nights,platform&order=check_out.asc&limit=20`),
+      sbGet('reservations',`check_in=gt.${manDt}&status=not.in.(cancelled,cancelada,expirada,bloqueada_admin)&select=id,guest_name,check_in,check_out,nights&order=check_in.asc&limit=1`)
+    ]);
+    const ci=Array.isArray(ciRows)?ciRows.filter(r=>!EXCL.has(r.status)):[];
+    const co=Array.isArray(coRows)?coRows.filter(r=>!EXCL.has(r.status)):[];
+    const next=Array.isArray(nextRows)?nextRows:[];
+    const ciHoy=ci.filter(r=>r.check_in===hoy);
+    const ciMan=ci.filter(r=>r.check_in===manDt);
+    const coHoy=co.filter(r=>r.check_out===hoy);
+    const coMan=co.filter(r=>r.check_out===manDt);
+    const cruce=coHoy.length>0&&ciHoy.length>0;
+    const fmtR=arr=>arr.map(x=>`• ${x.guest_name||'—'} · ${calcN(x.check_in,x.check_out)||x.nights||'?'} noches`).join(NL);
+    let msg='📋 *INFORME OPERATIVO DIARIO*'+NL;
+    msg+='📅 Depa 506-A · '+lbl(hoy)+NL+NL;
+    msg+='🔵 *HOY — CHECK-OUTS*'+NL+(coHoy.length?fmtR(coHoy):'Sin salidas hoy.')+NL+NL;
+    msg+='🔵 *HOY — CHECK-INS*'+NL+(ciHoy.length?fmtR(ciHoy):'Sin entradas hoy.')+NL+NL;
+    msg+='🟡 *MAÑANA — CHECK-OUTS*'+NL+(coMan.length?fmtR(coMan):'Sin salidas mañana.')+NL+NL;
+    msg+='🟡 *MAÑANA — CHECK-INS*'+NL+(ciMan.length?fmtR(ciMan):'Sin entradas mañana.')+NL+NL;
+    if(cruce){
+      msg+='⚡ *CRUCE HOY — MISMA FECHA*'+NL;
+      coHoy.forEach(o=>ciHoy.forEach(i=>{msg+='• Sale: '+o.guest_name+' / Entra: '+i.guest_name+NL;}));
+      msg+=NL;
+    }
+    if(!ciHoy.length&&!ciMan.length&&next.length){
+      const nx=next[0];
+      msg+='📌 *PRÓXIMO INGRESO*'+NL+'• '+nx.guest_name+' · '+lbl(nx.check_in)+NL+NL;
+    }
+    msg+='✅ *CHECKLIST*'+NL;
+    msg+='□ ¿Departamento operativo?'+NL;
+    msg+='□ ¿Llaves en conserjería?'+NL;
+    msg+='□ ¿Limpieza coordinada?'+NL;
+    msg+='□ ¿Hay cruce salida/entrada?'+NL;
+    msg+='□ ¿Staff informado?'+NL;
+    msg+='□ ¿Reporte check-out pendiente?';
+    const prev=document.getElementById('informe-diario-preview');
+    if(prev){prev.style.display='block';prev.textContent=msg;}
+    window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+  }catch(e){
+    console.error('[Panel] generarInformeOperativo:',e);
+    toast('Error al generar informe · Revisa consola','err');
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='📲 Generar y compartir en Depa';}
+  }
 }
 // ══ EMAIL COMPROBANTE STAFF SOLICITUD (Phase 8B) ═══════════
 async function enviarEmailComprobanteStaffSolicitud(rowId){
