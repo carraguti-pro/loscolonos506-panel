@@ -198,14 +198,27 @@ export default async function handler() {
     return new Response(`Missing env vars: ${missing.join(', ')}`, { status: 500 });
   }
 
-  const recipients = (process.env.ICAL_ALERT_RECIPIENTS || '')
+  const rawRecipients = process.env.ICAL_ALERT_RECIPIENTS || '';
+  const recipients = rawRecipients
     .split(',')
     .map(email => email.trim())
+    .map(email => email.replace(/^["']|["']$/g, ''))
+    .map(email => email.replace(/\s+/g, ''))
     .filter(Boolean);
-  if (!recipients.length) {
-    console.error('[ical-alerts] ICAL_ALERT_RECIPIENTS resolved to empty list');
-    return new Response('No valid recipients', { status: 500 });
+
+  const invalidRecipients = recipients.filter(email => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+
+  if (!recipients.length || invalidRecipients.length) {
+    console.error('[ical-alerts] invalid recipients:', JSON.stringify({ recipients, invalidRecipients }));
+    return new Response(JSON.stringify({
+      ok: false,
+      error: 'Invalid ICAL_ALERT_RECIPIENTS',
+      recipients,
+      invalidRecipients,
+    }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
+
+  console.log('[ical-alerts] recipients:', JSON.stringify(recipients));
 
   const daysAhead = Math.max(1, parseInt(ICAL_ALERT_DAYS_AHEAD || '14', 10) || 14);
   const today     = getChileDate(0);
@@ -273,6 +286,7 @@ export default async function handler() {
   const html = buildHtml({ today, windowEnd, daysAhead, byPlatform, feedErrors });
   const totalEvents = Object.values(byPlatform).reduce((s, evs) => s + evs.length, 0);
 
+  console.log('[ical-alerts] resend to:', JSON.stringify(recipients));
   const sendRes = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
