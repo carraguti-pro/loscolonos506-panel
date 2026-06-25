@@ -198,7 +198,10 @@ export default async function handler() {
     return new Response(`Missing env vars: ${missing.join(', ')}`, { status: 500 });
   }
 
-  const recipients = ICAL_ALERT_RECIPIENTS.split(',').map(s => s.trim()).filter(Boolean);
+  const recipients = (process.env.ICAL_ALERT_RECIPIENTS || '')
+    .split(',')
+    .map(email => email.trim())
+    .filter(Boolean);
   if (!recipients.length) {
     console.error('[ical-alerts] ICAL_ALERT_RECIPIENTS resolved to empty list');
     return new Response('No valid recipients', { status: 500 });
