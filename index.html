@@ -5803,8 +5803,7 @@ function renderCal(){
       const dt=new Date(yy,mm-1,dd);dt.setDate(dt.getDate()+1);
       f=`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
     }
-    // date_end = día de salida iCal — marcar como checkout/rotación si no hay reserva interna
-    if(!occ[b.date_end]){occ[b.date_end]='co';extMeta[b.date_end]=tooltip;}
+    // date_end en iCal es exclusivo (DTEND VALUE=DATE): primer día libre — no marcar.
   });
 
   // ── 3. Tooltips reservas internas (solo visual — sin tocar lógica) ──────────
