@@ -338,19 +338,6 @@ tr.historico-row:hover td{opacity:.82}
   background:rgba(201,168,76,.18);
   outline:1.5px solid rgba(201,168,76,.5);outline-offset:-1px;
 }
-/* External iCal block: azul-gris sobrio, no compite con reservas internas */
-.cal-day.ext{
-  background:rgba(100,116,139,.13);color:#4A5568;font-weight:500;
-}
-/* Primer día de bloqueo externo: barra izquierda azul-gris (como ci pero en color ext) */
-.cal-day.ext-ci::before{
-  content:'';position:absolute;left:0;top:15%;bottom:15%;
-  width:2.5px;background:rgba(100,116,139,.55);border-radius:0 2px 2px 0;
-}
-.cal-leg-ext .cal-leg-swatch{
-  background:rgba(100,116,139,.2);
-  outline:1px dashed rgba(100,116,139,.5);outline-offset:-1px;
-}
 /* Responsive */
 @media(max-width:1024px){
   .cal-month-wrap:first-child{border-right:none;border-bottom:1px solid rgba(0,0,0,.05)}
@@ -1731,7 +1718,6 @@ tr.historico-row:hover td{opacity:.82}
             <div class="cal-leg cal-leg-co"><span class="cal-leg-swatch"></span>Salida huésped</div>
             <div class="cal-leg cal-leg-recambio"><span class="cal-leg-swatch"></span>Recambio</div>
             <div class="cal-leg cal-leg-today"><span class="cal-leg-swatch"></span>Hoy</div>
-            <div class="cal-leg cal-leg-ext"><span class="cal-leg-swatch"></span>Bloqueo iCal</div>
           </div>
           <!-- ↺ Sincronizar iCal — solo Admin -->
           <div style="display:flex;align-items:center;gap:.7rem;margin-top:.75rem;padding:0 .1rem">
@@ -5775,38 +5761,9 @@ function renderCal(){
     // si ya es stay/recambio → mantener (conflicto de datos, raro)
   });
 
-  // ── 2. Bloqueos externos iCal (prioridad baja — solo fechas libres) ────────
-  // TIMEZONE-SAFE: tratar iCal como fechas puras de calendario (VALUE=DATE), NO timestamps UTC.
-  // Iterar como strings YYYY-MM-DD directamente; incremento usa constructor LOCAL new Date(y,m,d)
-  // y getFullYear/Month/Date (locales). NUNCA toISOString() que convertiría a UTC.
-  // resCiSet: check-ins de reservas internas — blindaje contra solapamiento de bloques iCal.
-  // Si un bloque externo empieza el mismo día que una reserva interna, se ignora completamente.
-  const resCiSet=new Set(RES.filter(r=>!isCancelada(r)&&r.check_in).map(r=>r.check_in));
-  const extMeta={}; // date → tooltip
-  EXT_BLOCKS.forEach(b=>{
-    if(!b.date_start||!b.date_end)return;
-    // Regla defensiva: reserva interna con mismo check-in → bloqueo externo ignorado.
-    if(resCiSet.has(b.date_start))return;
-    const esc=s=>(s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    const srcLabel=b.source?b.source.charAt(0).toUpperCase()+b.source.slice(1)+' iCal':'iCal';
-    const tooltip=`${esc(srcLabel)} · ${esc(b.summary||'Bloqueo')} · ${b.date_start} → ${b.date_end}`;
-    // Iterar f como string ISO — comparación lexicográfica correcta para YYYY-MM-DD
-    let f=b.date_start;let extFirst=true;
-    while(f<b.date_end){ // noches bloqueadas: date_start hasta date_end-1
-      if(!occ[f]){
-        // Primer día del bloqueo: indicador de inicio (barra izq ext); resto: fill normal
-        occ[f]=extFirst?'ext-ci':'ext';extMeta[f]=tooltip;
-      }
-      extFirst=false;
-      // Avanzar al siguiente día: constructor LOCAL (sin UTC shift) + métodos locales de formato
-      const[yy,mm,dd]=f.split('-').map(Number);
-      const dt=new Date(yy,mm-1,dd);dt.setDate(dt.getDate()+1);
-      f=`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
-    }
-    // date_end en iCal es exclusivo (DTEND VALUE=DATE): primer día libre — no marcar.
-  });
+  // iCal es radar por email únicamente — no se pinta en el calendario operacional.
 
-  // ── 3. Tooltips reservas internas (solo visual — sin tocar lógica) ──────────
+  // ── 2. Tooltips reservas internas (solo visual — sin tocar lógica) ──────────
   const resMeta={};
   const rEsc=s=>(s||'').replace(/"/g,'&quot;');
   RES.filter(r=>!isCancelada(r)&&r.check_in&&r.check_out).forEach(r=>{
@@ -5843,9 +5800,7 @@ function renderCal(){
       else if(oc==='ci')cls+=' ci';
       else if(oc==='co')cls+=' co';
       else if(oc==='stay')cls+=' occ';
-      else if(oc==='ext-ci')cls+=' ext ext-ci';
-      else if(oc==='ext')cls+=' ext';
-      const tt=resMeta[f]||(extMeta[f]||null);const titleAttr=tt?` title="${tt}"`:'';
+      const tt=resMeta[f]||null;const titleAttr=tt?` title="${tt}"`:'';
       const isFreeDay=!oc;
       if(isFreeDay)cls+=' price-editable';
       const pd=isFreeDay&&ADM_PRICE_LOADED?ADM_PRICE_CACHE.get(f):null;
