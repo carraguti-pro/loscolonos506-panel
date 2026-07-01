@@ -6313,15 +6313,29 @@ function svSetPagoMantMode(isMaint){
   const btn=document.getElementById('sv-pago-btn');if(btn){btn.disabled=isMaint;btn.style.opacity=isMaint?'.4':'';}
 }
 async function solicitarPago(){
+  if(!REPORTE_CTX||!REPORTE_CTX.id){
+    toast('⚠ Debe seleccionar una reserva antes de solicitar pago de operación.','err');
+    return;
+  }
   if(_svPagoLock)return;
   _svPagoLock=true;
   const _btn=document.getElementById('sv-pago-btn');
   const _btxt=_btn?.textContent;
   if(_btn){_btn.disabled=true;_btn.textContent='Procesando…';}
   try{
-    // Guard: requiere contexto de reserva activa
-    if(!REPORTE_CTX||!REPORTE_CTX.id){
-      toast('⚠ Debe seleccionar una reserva antes de solicitar pago de operación.','err');
+    // Idempotency guard: block if an active operation payment_request already exists for this reservation
+    const _existing=await sbGet('checkout_reports','reservation_id=eq.'+REPORTE_CTX.id+'&order=created_at.desc&limit=20');
+    if(!Array.isArray(_existing)){
+      toast('⚠ No se pudo verificar si ya existe una solicitud de pago. Actualice e intente nuevamente.','err');
+      return;
+    }
+    const _activePR=_existing.find(r=>
+      r.checklist?.tipo==='payment_request'&&
+      (r.checklist?.subtipo==='operacion'||r.checklist?.payment_type==='operacion')&&
+      !['rechazado','cancelado'].includes(r.checklist?.estado)
+    );
+    if(_activePR){
+      toast('⚠ Ya existe una solicitud de pago para esta reserva. Revisa Pagos de Operación.','err');
       return;
     }
     const HONORARIO_BASE=parseInt(document.getElementById('sv-honorario')?.value)||35000,VALOR_FICHA=1500;
