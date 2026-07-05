@@ -1382,17 +1382,17 @@ tr.historico-row:hover td{opacity:.82}
           <div style="font-size:.6rem;color:var(--muted);margin-bottom:.35rem">Corresponde al pago por limpieza/revisión/operación asociada a un huésped. No usar para compras o reembolsos.</div>
           <div id="sv-pago-contexto" style="font-size:.62rem;color:var(--muted);margin-bottom:.55rem">Seleccione un reporte check-out para solicitar pago de operación.</div>
           <div id="sv-pago-mant-aviso" style="display:none;font-size:.67rem;padding:.4rem .6rem;background:#fff7ed;border:1px solid #fed7aa;border-left:3px solid #f97316;border-radius:.35rem;margin-bottom:.6rem;color:#9a3412">🔧 No aplica para tareas de mantención. Usa "Registrar observación".</div>
-          <div class="fin-row-item"><span class="fin-row-lbl">Honorarios operación</span><input type="number" id="sv-honorario" class="fi" value="35000" min="0" step="1000" style="width:7rem;text-align:right;font-size:.8rem;padding:.2rem .4rem" oninput="adjF(0)"></div>
+          <div class="fin-row-item"><span class="fin-row-lbl">Honorarios operación</span><input type="number" id="sv-honorario" class="fi" value="40000" min="0" step="1000" style="width:7rem;text-align:right;font-size:.8rem;padding:.2rem .4rem" oninput="adjF(0)"></div>
           <div class="fin-row-item"><span class="fin-row-lbl">Fichas lavandería</span>
-            <div style="display:flex;align-items:center;gap:.4rem">
-              <button class="btn btn-ghost btn-xs" onclick="adjF(-1)">−</button>
-              <span id="f-count">0</span> × $1.500
-              <button class="btn btn-ghost btn-xs" onclick="adjF(1)">+</button>
+            <div style="display:flex;align-items:center;gap:.5rem">
+              <button class="btn btn-ghost btn-xs" style="min-width:1.9rem;font-size:.95rem;font-weight:700;border-color:rgba(0,0,0,.25);padding:.18rem .45rem" onclick="adjF(-1)">−</button>
+              <span id="f-count" style="font-weight:600;font-size:.85rem;min-width:.8rem;text-align:center">0</span> × $1.500
+              <button class="btn btn-ghost btn-xs" style="min-width:1.9rem;font-size:.95rem;font-weight:700;border-color:rgba(0,0,0,.25);padding:.18rem .45rem" onclick="adjF(1)">+</button>
             </div>
           </div>
-          <div class="fin-row-item"><span class="fin-row-lbl">Total operación</span><span class="fin-val" id="sv-total-op">$35.000</span></div>
-          <div class="fin-total-row"><span>Total a transferir</span><span class="fin-val pos" id="sv-total">$35.000</span></div>
-          <button class="btn btn-ink" id="sv-pago-btn" style="width:100%;margin-top:.6rem" onclick="solicitarPago()">Solicitar pago de operación</button>
+          <div class="fin-row-item"><span class="fin-row-lbl">Total operación</span><span class="fin-val" id="sv-total-op">$40.000</span></div>
+          <div class="fin-total-row"><span>Total a transferir</span><span class="fin-val pos" id="sv-total" style="font-family:Arial,sans-serif;font-weight:700">$40.000</span></div>
+          <button class="btn btn-ink" id="sv-pago-btn" style="width:100%;margin-top:.6rem" onclick="solicitarPago()">SOLICITAR PAGO OPERACIÓN</button>
         </div>
         <div class="card" style="margin-bottom:.9rem">
           <div style="font-family:'Cormorant Garamond',serif;font-size:.9rem;margin-bottom:.4rem">📋 Gastos y Reembolsos</div>
@@ -6235,10 +6235,22 @@ async function loadServicios(){
     r=Array.isArray(data)?data:[];
   }
   SV_RES=r;
-  const svBtnLbl=os=>['salida_reciente','salida_hoy','huesped_alojado'].includes(os)?'Reporte check-out':['bloqueada_admin','mantencion','mantenimiento'].includes(os)?'Registrar observación':'Preparar ingreso';
+  const _osActivo=os=>['salida_reciente','salida_hoy','huesped_alojado'].includes(os);
+  const svBtnLbl=os=>['salida_reciente','salida_hoy'].includes(os)?'⚡ REPORTE CHECK-OUT':os==='huesped_alojado'?'Reporte check-out':['bloqueada_admin','mantencion','mantenimiento'].includes(os)?'Registrar observación':'Preparar ingreso';
+  const svBtnCls=os=>['salida_reciente','salida_hoy'].includes(os)?'btn btn-ink btn-xs':'btn btn-ghost btn-xs';
   const repBtn=document.getElementById('sv-reporte-btn');
   if(repBtn)repBtn.style.display=CU?.role==='admin'?'':'none';
-  document.getElementById('sv-tbody').innerHTML=r.length?r.map((x,i)=>{const os=svOpStatus(x,hoy);return`<tr><td><strong>${x.guest_name||'—'}</strong></td><td>${fmtD(x.check_in)}</td><td>${fmtD(x.check_out)}</td><td>${x.nights||calcN(x.check_in,x.check_out)}</td><td>${platBadge(x.platform)}</td><td>${stBadge(os)}</td><td><button class="btn btn-ghost btn-xs" onclick="openReporte(${i})">${svBtnLbl(os)}</button></td></tr>`;}).join(''):'<tr><td colspan="7"><div class="empty">Sin reservas próximas</div></td></tr>';
+  const _svRenderRow=(x,i,extra='')=>{const os=svOpStatus(x,hoy);return`<tr${extra}><td><strong>${x.guest_name||'—'}</strong></td><td>${fmtD(x.check_in)}</td><td>${fmtD(x.check_out)}</td><td>${x.nights||calcN(x.check_in,x.check_out)}</td><td>${platBadge(x.platform)}</td><td>${stBadge(os)}</td><td><button class="${svBtnCls(os)}" onclick="openReporte(${i})">${svBtnLbl(os)}</button></td></tr>`;};
+  if(r.length){
+    const _idx=r.map((x,i)=>({x,i,os:svOpStatus(x,hoy)}));
+    const _activos=_idx.filter(({os})=>_osActivo(os));
+    const _futuros=_idx.filter(({os})=>!_osActivo(os));
+    const _vis=_futuros.slice(0,3),_hid=_futuros.slice(3);
+    const _toggle=_hid.length?`<tr id="sv-ver-todas-row"><td colspan="7" style="text-align:center;padding:.45rem 0"><button class="btn btn-ghost btn-xs" onclick="svExpandTable()">Ver ${_hid.length} reserva${_hid.length>1?'s':''} más →</button></td></tr>`:'';
+    document.getElementById('sv-tbody').innerHTML=[..._activos,..._vis].map(({x,i})=>_svRenderRow(x,i)).join('')+_hid.map(({x,i})=>_svRenderRow(x,i,' class="sv-row-hidden" style="display:none"')).join('')+_toggle;
+  }else{
+    document.getElementById('sv-tbody').innerHTML='<tr><td colspan="7"><div class="empty">Sin reservas próximas</div></td></tr>';
+  }
   const ins=await sbGet('supply_alerts','order=item.asc&limit=50');
   SV_INS=Array.isArray(ins)?ins:[];
   document.getElementById('sv-insumos').innerHTML=SV_INS.length?SV_INS.map((i,idx)=>insCard(i,idx)).join(''):'<div class="empty" style="padding:1rem">Sin insumos<br><button class="btn btn-ghost btn-sm" style="margin-top:.5rem" onclick="openModal(\'m-insumo\')">+ Agregar</button></div>';
@@ -6250,28 +6262,46 @@ async function loadServicios(){
 // ── Notas internas del propietario ─────────────────────────────────────
 async function loadOwnerNotes(){
   const formEl=document.getElementById('sv-owner-note-form');
-  if(formEl)formEl.style.display=CU?.role==='admin'?'block':'none';
+  if(formEl)formEl.style.display='none';
   const listEl=document.getElementById('sv-owner-notes-list');
   if(!listEl)return;
   listEl.innerHTML='<div class="empty" style="padding:.6rem 0">Cargando…</div>';
   const data=await sbGet('checkout_reports','order=created_at.desc&limit=50');
-  const rows=Array.isArray(data)?data.filter(r=>r.checklist?.tipo==='owner_note'):[];
-  if(!rows.length){listEl.innerHTML='<div class="empty" style="padding:.8rem 0;color:var(--muted)">Sin notas internas activas.</div>';return;}
-  listEl.innerHTML=rows.map(r=>{
+  const allNotes=Array.isArray(data)?data.filter(r=>r.checklist?.tipo==='owner_note'):[];
+  const activeNotes=allNotes.filter(r=>(r.checklist?.estado||'activa')==='activa');
+  const renderNote=(r,compact=false)=>{
     const cl=r.checklist||{};
     const activa=(cl.estado||'activa')==='activa';
     const fecha=r.created_at?new Date(r.created_at).toLocaleString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'America/Santiago'}):'—';
     const bc=activa?'#a07000':'#888';
     const adminBtn=(CU?.role==='admin'&&activa)?`<button class="btn btn-ghost btn-xs" style="margin-top:.4rem;font-size:.58rem" onclick="markOwnerNoteResolved('${r.id}')">Marcar resuelta</button>`:'';
-    return`<div style="border:1px solid ${activa?'rgba(201,168,76,.22)':'rgba(0,0,0,.07)'};border-left:3px solid ${activa?'var(--gold)':'#ccc'};border-radius:.45rem;padding:.65rem .85rem;margin-bottom:.5rem;background:${activa?'#fffef8':'#f8f8f8'};opacity:${activa?1:.72}">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.32rem;flex-wrap:wrap;gap:.3rem">
-        <div style="font-size:.68rem;color:var(--muted)">${fecha}${r.created_by?' · '+r.created_by:''}</div>
-        <span style="font-size:.62rem;font-weight:700;color:${bc};background:${bc}18;border:1px solid ${bc}33;border-radius:20px;padding:.1rem .45rem">${activa?'Activa':'Resuelta'}</span>
-      </div>
-      <div style="font-size:.88rem;color:var(--ink);white-space:pre-wrap;line-height:1.55">${r.notes||'—'}</div>
-      ${adminBtn}
-    </div>`;
-  }).join('');
+    const noteStyle=compact?'font-size:.82rem;color:var(--ink);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.45':'font-size:.88rem;color:var(--ink);white-space:pre-wrap;line-height:1.55';
+    const pad=compact?'padding:.45rem .7rem':'padding:.65rem .85rem';
+    return`<div style="border:1px solid ${activa?'rgba(201,168,76,.22)':'rgba(0,0,0,.07)'};border-left:3px solid ${activa?'var(--gold)':'#ccc'};border-radius:.45rem;${pad};margin-bottom:.42rem;background:${activa?'#fffef8':'#f8f8f8'};opacity:${activa?1:.72}"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.25rem;flex-wrap:wrap;gap:.3rem"><div style="font-size:.62rem;color:var(--muted)">${fecha}${r.created_by?' · '+r.created_by:''}</div><span style="font-size:.58rem;font-weight:700;color:${bc};background:${bc}18;border:1px solid ${bc}33;border-radius:20px;padding:.08rem .38rem">${activa?'Activa':'Resuelta'}</span></div><div style="${noteStyle}">${r.notes||'—'}</div>${adminBtn}</div>`;
+  };
+  if(CU?.role==='staff'){
+    if(!activeNotes.length){const b=document.getElementById('sv-owner-notes-block');if(b)b.style.display='none';return;}
+    const b=document.getElementById('sv-owner-notes-block');if(b)b.style.display='';
+    const vis=activeNotes.slice(0,2),hid=activeNotes.slice(2);
+    const expandBtn=hid.length?`<button id="sv-notes-expand-btn" class="btn btn-ghost btn-xs" style="margin-top:.3rem;font-size:.68rem" onclick="svExpandNotes()">Ver ${hid.length} instrucción${hid.length>1?'es':''} más →</button>`:'';
+    listEl.innerHTML=vis.map(r=>renderNote(r,true)).join('')+hid.map(r=>`<div class="sv-note-hidden" style="display:none">${renderNote(r,true)}</div>`).join('')+expandBtn;
+  }else{
+    const newNoteBtn=`<button class="btn btn-ghost btn-xs" style="margin-bottom:.65rem;font-size:.7rem" onclick="svToggleNoteForm()">+ Nueva nota interna</button>`;
+    if(!allNotes.length){listEl.innerHTML=newNoteBtn+'<div class="empty" style="padding:.8rem 0;color:var(--muted)">Sin notas internas.</div>';return;}
+    listEl.innerHTML=newNoteBtn+allNotes.map(renderNote).join('');
+  }
+}
+function svExpandTable(){
+  document.getElementById('sv-ver-todas-row')?.remove();
+  document.querySelectorAll('#sv-tbody .sv-row-hidden').forEach(el=>el.style.display='');
+}
+function svExpandNotes(){
+  document.querySelectorAll('#sv-owner-notes-list .sv-note-hidden').forEach(el=>el.style.display='');
+  document.getElementById('sv-notes-expand-btn')?.remove();
+}
+function svToggleNoteForm(){
+  const f=document.getElementById('sv-owner-note-form');
+  if(f)f.style.display=f.style.display==='block'?'none':'block';
 }
 async function saveOwnerNote(){
   if(CU?.role!=='admin'){toast('Solo el administrador puede crear notas internas.','err');return;}
@@ -6307,7 +6337,7 @@ function resetChk(){
   const bar=document.getElementById('chk-bar');if(bar)bar.style.width='0%';
   const lbl=document.getElementById('chk-pct');if(lbl)lbl.textContent='0% completado';
 }
-function adjF(d){fichas=Math.max(0,fichas+d);const fc=document.getElementById('f-count');if(fc)fc.textContent=fichas;const hon=parseInt(document.getElementById('sv-honorario')?.value)||35000;const total=hon+fichas*1500;const fmt=v=>'$'+v.toLocaleString('es-CL');const op=document.getElementById('sv-total-op');if(op)op.textContent=fmt(total);const tot=document.getElementById('sv-total');if(tot)tot.textContent=fmt(total);}
+function adjF(d){fichas=Math.max(0,fichas+d);const fc=document.getElementById('f-count');if(fc)fc.textContent=fichas;const hon=parseInt(document.getElementById('sv-honorario')?.value)||40000;const total=hon+fichas*1500;const fmt=v=>'$'+v.toLocaleString('es-CL');const op=document.getElementById('sv-total-op');if(op)op.textContent=fmt(total);const tot=document.getElementById('sv-total');if(tot)tot.textContent=fmt(total);}
 function svSetPagoMantMode(isMaint){
   const av=document.getElementById('sv-pago-mant-aviso');if(av)av.style.display=isMaint?'':'none';
   const btn=document.getElementById('sv-pago-btn');if(btn){btn.disabled=isMaint;btn.style.opacity=isMaint?'.4':'';}
@@ -6338,7 +6368,7 @@ async function solicitarPago(){
       toast('⚠ Ya existe una solicitud de pago para esta reserva. Revisa Pagos de Operación.','err');
       return;
     }
-    const HONORARIO_BASE=parseInt(document.getElementById('sv-honorario')?.value)||35000,VALOR_FICHA=1500;
+    const HONORARIO_BASE=parseInt(document.getElementById('sv-honorario')?.value)||40000,VALOR_FICHA=1500;
     const total=HONORARIO_BASE+fichas*VALOR_FICHA;
     const concepto='Pago de operación · '+(REPORTE_CTX.guest_name||'Huésped');
     const payload={
