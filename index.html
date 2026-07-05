@@ -6235,16 +6235,70 @@ async function loadServicios(){
     r=Array.isArray(data)?data:[];
   }
   SV_RES=r;
+  // ── Staff op-state verification (checkout_reports cross-check) ──
+  let _svVerifyOk=true;
+  const _prPriority=['pagado','observado','rechazado','aprobado','revisado','pendiente'];
+  const _prMap=new Map();
+  const _crSet=new Set();
+  if(CU?.role==='staff'){
+    const _svIds=SV_RES.filter(x=>x.id).map(x=>x.id);
+    if(_svIds.length){
+      const _crRows=await sbGet('checkout_reports','reservation_id=in.('+_svIds.join(',')+')'+'&select=reservation_id,checklist&order=created_at.desc&limit=200');
+      if(!Array.isArray(_crRows)){
+        _svVerifyOk=false;
+      }else{
+        _crRows.forEach(row=>{
+          const cl=row.checklist||{};
+          const rid=row.reservation_id;
+          if(!rid)return;
+          if(cl.tipo==='payment_request'&&(cl.subtipo==='operacion'||cl.payment_type==='operacion')){
+            const st=cl.estado||'pendiente';
+            const cur=_prMap.get(rid);
+            if(!cur||_prPriority.indexOf(st)<_prPriority.indexOf(cur))_prMap.set(rid,st);
+          }
+          if(cl.tipo==='checkout')_crSet.add(rid);
+        });
+      }
+    }
+  }
+  const _svStaffState=x=>{
+    if(CU?.role!=='staff')return'activo';
+    const pr=_prMap.get(x.id);
+    if(pr==='pagado')return'cerrado';
+    if(pr==='observado'||pr==='rechazado')return'corregir';
+    if(pr==='pendiente'||pr==='aprobado'||pr==='revisado')return'en_revision';
+    if(pr==='cancelado')return'activo';
+    if(_crSet.has(x.id))return'en_revision';
+    return'activo';
+  };
   const _osActivo=os=>['salida_reciente','salida_hoy','huesped_alojado'].includes(os);
   const svBtnLbl=os=>['salida_reciente','salida_hoy'].includes(os)?'⚡ REPORTE CHECK-OUT':os==='huesped_alojado'?'Reporte check-out':['bloqueada_admin','mantencion','mantenimiento'].includes(os)?'Registrar observación':'Preparar ingreso';
   const svBtnCls=os=>['salida_reciente','salida_hoy'].includes(os)?'btn btn-ink btn-xs':'btn btn-ghost btn-xs';
   const repBtn=document.getElementById('sv-reporte-btn');
   if(repBtn)repBtn.style.display=CU?.role==='admin'?'':'none';
-  const _svRenderRow=(x,i,extra='')=>{const os=svOpStatus(x,hoy);return`<tr${extra}><td><strong>${x.guest_name||'—'}</strong></td><td>${fmtD(x.check_in)}</td><td>${fmtD(x.check_out)}</td><td>${x.nights||calcN(x.check_in,x.check_out)}</td><td>${platBadge(x.platform)}</td><td>${stBadge(os)}</td><td><button class="${svBtnCls(os)}" onclick="openReporte(${i})">${svBtnLbl(os)}</button></td></tr>`;};
+  const _svRenderRow=(x,i,extra='')=>{
+    const os=svOpStatus(x,hoy);
+    let actionHTML;
+    if(CU?.role==='staff'){
+      const ss=_svStaffState(x);
+      if(ss==='corregir'){
+        actionHTML=`<span style="font-size:.67rem;font-weight:600;color:#c0392b">⚠ CORREGIR REPORTE</span>`;
+      }else if(ss==='en_revision'){
+        actionHTML=`<span style="font-size:.67rem;font-weight:600;color:#a07000">⏳ EN REVISIÓN / PAGO PENDIENTE</span>`;
+      }else if(!_svVerifyOk&&['salida_reciente','salida_hoy'].includes(os)){
+        actionHTML=`<span style="font-size:.67rem;font-weight:600;color:#c0392b">⚠ VERIFICAR ESTADO</span>`;
+      }else{
+        actionHTML=`<button class="${svBtnCls(os)}" onclick="openReporte(${i})">${svBtnLbl(os)}</button>`;
+      }
+    }else{
+      actionHTML=`<button class="${svBtnCls(os)}" onclick="openReporte(${i})">${svBtnLbl(os)}</button>`;
+    }
+    return`<tr${extra}><td><strong>${x.guest_name||'—'}</strong></td><td>${fmtD(x.check_in)}</td><td>${fmtD(x.check_out)}</td><td>${x.nights||calcN(x.check_in,x.check_out)}</td><td>${platBadge(x.platform)}</td><td>${stBadge(os)}</td><td>${actionHTML}</td></tr>`;
+  };
   if(r.length){
     const _idx=r.map((x,i)=>({x,i,os:svOpStatus(x,hoy)}));
-    const _activos=_idx.filter(({os})=>_osActivo(os));
-    const _futuros=_idx.filter(({os})=>!_osActivo(os));
+    const _activos=_idx.filter(({os,x})=>_osActivo(os)&&_svStaffState(x)!=='cerrado');
+    const _futuros=_idx.filter(({os,x})=>!_osActivo(os)&&_svStaffState(x)!=='cerrado');
     const _vis=_futuros.slice(0,3),_hid=_futuros.slice(3);
     const _toggle=_hid.length?`<tr id="sv-ver-todas-row"><td colspan="7" style="text-align:center;padding:.45rem 0"><button class="btn btn-ghost btn-xs" onclick="svExpandTable()">Ver ${_hid.length} reserva${_hid.length>1?'s':''} más →</button></td></tr>`:'';
     document.getElementById('sv-tbody').innerHTML=[..._activos,..._vis].map(({x,i})=>_svRenderRow(x,i)).join('')+_hid.map(({x,i})=>_svRenderRow(x,i,' class="sv-row-hidden" style="display:none"')).join('')+_toggle;
@@ -6269,26 +6323,36 @@ async function loadOwnerNotes(){
   const data=await sbGet('checkout_reports','order=created_at.desc&limit=50');
   const allNotes=Array.isArray(data)?data.filter(r=>r.checklist?.tipo==='owner_note'):[];
   const activeNotes=allNotes.filter(r=>(r.checklist?.estado||'activa')==='activa');
+  // Only active notes are ever rendered — resolved notes are archived
   const renderNote=(r,compact=false)=>{
-    const cl=r.checklist||{};
-    const activa=(cl.estado||'activa')==='activa';
     const fecha=r.created_at?new Date(r.created_at).toLocaleString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'America/Santiago'}):'—';
-    const bc=activa?'#a07000':'#888';
-    const adminBtn=(CU?.role==='admin'&&activa)?`<button class="btn btn-ghost btn-xs" style="margin-top:.4rem;font-size:.58rem" onclick="markOwnerNoteResolved('${r.id}')">Marcar resuelta</button>`:'';
+    const adminBtn=CU?.role==='admin'?`<button class="btn btn-ghost btn-xs" style="margin-top:.4rem;font-size:.58rem" onclick="markOwnerNoteResolved('${r.id}')">Marcar resuelta</button>`:'';
     const noteStyle=compact?'font-size:.82rem;color:var(--ink);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.45':'font-size:.88rem;color:var(--ink);white-space:pre-wrap;line-height:1.55';
     const pad=compact?'padding:.45rem .7rem':'padding:.65rem .85rem';
-    return`<div style="border:1px solid ${activa?'rgba(201,168,76,.22)':'rgba(0,0,0,.07)'};border-left:3px solid ${activa?'var(--gold)':'#ccc'};border-radius:.45rem;${pad};margin-bottom:.42rem;background:${activa?'#fffef8':'#f8f8f8'};opacity:${activa?1:.72}"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.25rem;flex-wrap:wrap;gap:.3rem"><div style="font-size:.62rem;color:var(--muted)">${fecha}${r.created_by?' · '+r.created_by:''}</div><span style="font-size:.58rem;font-weight:700;color:${bc};background:${bc}18;border:1px solid ${bc}33;border-radius:20px;padding:.08rem .38rem">${activa?'Activa':'Resuelta'}</span></div><div style="${noteStyle}">${r.notes||'—'}</div>${adminBtn}</div>`;
+    return`<div style="border:1px solid rgba(201,168,76,.22);border-left:3px solid var(--gold);border-radius:.45rem;${pad};margin-bottom:.42rem;background:#fffef8"><div style="font-size:.62rem;color:var(--muted);margin-bottom:.25rem">${fecha}${r.created_by?' · '+r.created_by:''}</div><div style="${noteStyle}">${r.notes||'—'}</div>${adminBtn}</div>`;
   };
+  const n=activeNotes.length;
+  const sem=n===0
+    ?`<div style="display:flex;align-items:center;gap:.5rem;padding:.45rem .7rem;border-radius:.45rem;background:#f0faf4;border:1px solid rgba(39,174,96,.2);margin-bottom:.5rem"><span style="font-size:.8rem">🟢</span><span style="font-size:.72rem;font-weight:600;color:#27ae60">Sin instrucciones activas</span></div>`
+    :n===1
+    ?`<div style="display:flex;align-items:center;gap:.5rem;padding:.45rem .7rem;border-radius:.45rem;background:#fffbe6;border:1px solid rgba(201,168,76,.3);margin-bottom:.5rem"><span style="font-size:.8rem">🟡</span><span style="font-size:.72rem;font-weight:600;color:#a07000">1 instrucción activa — Leer primero</span></div>`
+    :`<div style="display:flex;align-items:center;gap:.5rem;padding:.45rem .7rem;border-radius:.45rem;background:#fff5f5;border:1px solid rgba(192,57,43,.2);margin-bottom:.5rem"><span style="font-size:.8rem">🔴</span><span style="font-size:.72rem;font-weight:600;color:#c0392b">${n} instrucciones activas — Leer antes de operar</span></div>`;
   if(CU?.role==='staff'){
-    if(!activeNotes.length){const b=document.getElementById('sv-owner-notes-block');if(b)b.style.display='none';return;}
     const b=document.getElementById('sv-owner-notes-block');if(b)b.style.display='';
+    if(n===0){listEl.innerHTML=sem;return;}
     const vis=activeNotes.slice(0,2),hid=activeNotes.slice(2);
-    const expandBtn=hid.length?`<button id="sv-notes-expand-btn" class="btn btn-ghost btn-xs" style="margin-top:.3rem;font-size:.68rem" onclick="svExpandNotes()">Ver ${hid.length} instrucción${hid.length>1?'es':''} más →</button>`:'';
-    listEl.innerHTML=vis.map(r=>renderNote(r,true)).join('')+hid.map(r=>`<div class="sv-note-hidden" style="display:none">${renderNote(r,true)}</div>`).join('')+expandBtn;
+    const expandBtn=hid.length?`<button id="sv-notes-expand-btn" class="btn btn-ghost btn-xs" style="margin-top:.3rem;font-size:.68rem" onclick="svExpandNotes()">Ver todas las instrucciones (${hid.length} más)</button>`:'';
+    listEl.innerHTML=sem+vis.map(r=>renderNote(r,true)).join('')+hid.map(r=>`<div class="sv-note-hidden" style="display:none">${renderNote(r,true)}</div>`).join('')+expandBtn;
+  }else if(CU?.role==='admin'){
+    const b=document.getElementById('sv-owner-notes-block');if(b)b.style.display='';
+    const newNoteBtn=`<button class="btn btn-ghost btn-xs" style="margin-bottom:.55rem;font-size:.7rem" onclick="svToggleNoteForm()">+ Nueva nota interna</button>`;
+    if(n===0){listEl.innerHTML=newNoteBtn+sem;return;}
+    const vis=activeNotes.slice(0,2),hid=activeNotes.slice(2);
+    const expandBtn=hid.length?`<button id="sv-notes-expand-btn" class="btn btn-ghost btn-xs" style="margin-top:.3rem;font-size:.68rem" onclick="svExpandNotes()">Ver todas las instrucciones (${hid.length} más)</button>`:'';
+    listEl.innerHTML=newNoteBtn+sem+vis.map(r=>renderNote(r)).join('')+hid.map(r=>`<div class="sv-note-hidden" style="display:none">${renderNote(r)}</div>`).join('')+expandBtn;
   }else{
-    const newNoteBtn=`<button class="btn btn-ghost btn-xs" style="margin-bottom:.65rem;font-size:.7rem" onclick="svToggleNoteForm()">+ Nueva nota interna</button>`;
-    if(!allNotes.length){listEl.innerHTML=newNoteBtn+'<div class="empty" style="padding:.8rem 0;color:var(--muted)">Sin notas internas.</div>';return;}
-    listEl.innerHTML=newNoteBtn+allNotes.map(renderNote).join('');
+    // Role not yet loaded or unknown — never render admin notes
+    const b=document.getElementById('sv-owner-notes-block');if(b)b.style.display='none';
   }
 }
 function svExpandTable(){
