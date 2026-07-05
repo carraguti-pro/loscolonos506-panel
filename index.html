@@ -1339,6 +1339,30 @@ tr.historico-row:hover td{opacity:.82}
       <div><div style="font-family:'Cormorant Garamond',serif;font-size:1.4rem;color:var(--ink)">Servicios y Operaciones</div><div style="font-size:.6rem;color:var(--muted);margin-top:.2rem" id="sv-fecha"></div></div>
       <button id="sv-reporte-btn" class="btn btn-ink" onclick="openReporte()">+ Reporte</button>
     </div>
+    <!-- ── Guía rápida Staff — fija, no cuenta como instrucción activa ── -->
+    <div id="sv-guia-block" style="margin-bottom:.75rem">
+      <button class="btn btn-ghost btn-xs" style="font-size:.7rem;color:var(--muted);border-color:rgba(0,0,0,.12)" onclick="svToggleGuia()">📘 Ver guía rápida Staff</button>
+      <div id="sv-guia-content" style="display:none;margin-top:.5rem;background:#f8f9fb;border:1px solid rgba(0,0,0,.07);border-left:3px solid #1A468C;border-radius:.45rem;padding:.65rem .9rem;font-size:.74rem;color:var(--ink);line-height:1.65;white-space:pre-wrap">GUÍA RÁPIDA — SERVICIOS Y OPERACIONES
+
+ESTADOS EN TABLA DE RESERVAS
+⚡ REPORTE CHECK-OUT — Acción requerida. Presenta el informe de salida y solicita pago de operación.
+⏳ EN REVISIÓN / PAGO PENDIENTE — Reporte o pago ya enviado. Espera confirmación del administrador.
+⚠ CORREGIR REPORTE — El administrador solicitó corrección. Consulta antes de reenviar.
+✅ CHECK-OUT CERRADO — Operación completa y pagada. Sin acción requerida.
+⚠ VERIFICAR ESTADO — No se pudo confirmar el estado. No operes hasta que el sistema se actualice.
+
+FLUJO PAGO DE OPERACIÓN
+1. Selecciona la reserva con botón ⚡ REPORTE CHECK-OUT
+2. Completa el reporte de salida (checklist)
+3. En "Pago Operación": ingresa honorario y fichas de lavandería
+4. Haz clic en SOLICITAR PAGO OPERACIÓN
+5. Espera confirmación del administrador (verás ⏳ EN REVISIÓN)
+
+INSTRUCCIONES DEL PROPIETARIO
+Las instrucciones activas aparecen sobre la tabla de reservas.
+🟢 Sin instrucciones → sin requisitos especiales para esta operación
+🟡 / 🔴 Con instrucciones → leer y seguir antes de comenzar</div>
+    </div>
     <!-- ── Notas internas / Instrucciones del propietario ── -->
     <div id="sv-owner-notes-block" style="margin-bottom:1.2rem">
       <div class="sh" style="margin-bottom:.35rem"><div style="font-family:'Cormorant Garamond',serif;font-size:.98rem">📋 Leer primero · Instrucciones del propietario</div></div>
@@ -6366,6 +6390,10 @@ function svExpandNotes(){
 function svToggleNoteForm(){
   const f=document.getElementById('sv-owner-note-form');
   if(f)f.style.display=f.style.display==='block'?'none':'block';
+}
+function svToggleGuia(){
+  const g=document.getElementById('sv-guia-content');
+  if(g)g.style.display=g.style.display==='block'?'none':'block';
 }
 async function saveOwnerNote(){
   if(CU?.role!=='admin'){toast('Solo el administrador puede crear notas internas.','err');return;}
