@@ -1835,6 +1835,9 @@ Las instrucciones activas aparecen sobre la tabla de reservas.
           </div>
         </div>
 
+        <!-- ── Aviso: reservas activas sin pago registrado ── -->
+        <div id="fin-sin-pago-warn" style="display:none;margin:.75rem 0 0"></div>
+
         <!-- ── Cuerpo: Reservas | Gastos ── -->
         <div class="two-col">
 
@@ -6090,6 +6093,37 @@ async function loadFinanzasPeriodo(){
     }else{
       elRes.textContent='—';
       elRes.className='fin-kpi-val muted';
+    }
+  }
+  // ── Aviso: reservas activas sin pago registrado ──
+  const _wEl=document.getElementById('fin-sin-pago-warn');
+  if(_wEl){
+    const _actIds=rArr.filter(x=>!isCancelada(x)).map(x=>x.id);
+    if(_actIds.length===0){
+      _wEl.style.display='none';
+    }else{
+      let _pc=null;
+      try{const _r=await fetch(`${SB}/rest/v1/reservation_payments?reservation_id=in.(${_actIds.join(',')})`,{headers:sbH()});_pc=_r.ok?await _r.json():null;}catch(e){_pc=null;}
+      if(!Array.isArray(_pc)){
+        _wEl.style.display='block';
+        _wEl.innerHTML='<div style="padding:.6rem .85rem;background:#fff7ed;border:1px solid rgba(0,0,0,.07);border-left:3px solid #dc2626;border-radius:.45rem;font-size:.72rem;color:#9a3412">⚠ No se pudo verificar pagos registrados. Actualice e intente nuevamente.</div>';
+      }else{
+        const _idsConPago=new Set(_pc.map(p=>p.reservation_id));
+        const _sinPago=rArr.filter(x=>!isCancelada(x)&&!_idsConPago.has(x.id));
+        if(_sinPago.length===0){
+          _wEl.style.display='none';
+        }else{
+          const _mn=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+          const _fd=d=>{if(!d)return'—';const[y,mo,dy]=d.split('-');return`${parseInt(dy)} ${_mn[parseInt(mo)-1]} ${String(y).slice(2)}`;};
+          const _rows=_sinPago.map(r=>{
+            const monto=r.total_usd?`US$${parseFloat(r.total_usd).toLocaleString('en-US',{minimumFractionDigits:2})}`:r.total_clp?`$${Math.round(parseFloat(r.total_clp)).toLocaleString('es-CL')}`:'—';
+            const stLbl=({confirmada:'Confirmada',pendiente:'Pendiente',solicitud:'Solicitud',bloqueada_admin:'Bloqueada'})[r.status]||r.status||'—';
+            return `<div style="padding:.45rem 0;border-bottom:1px solid rgba(0,0,0,.05);font-size:.72rem;color:#5c3d00;line-height:1.5"><span style="font-weight:500;color:#3d2800">${r.guest_name||'—'}</span> · ${_fd(r.check_in)} → ${_fd(r.check_out)} · ${r.platform||'—'} · ${monto} · ${stLbl}<div style="font-size:.62rem;color:#a16207;margin-top:.1rem">Acción sugerida: registrar pago esperado</div></div>`;
+          }).join('');
+          _wEl.style.display='block';
+          _wEl.innerHTML=`<div style="padding:.65rem .9rem;background:#fffbeb;border:1px solid rgba(0,0,0,.07);border-left:3px solid #d97706;border-radius:.45rem"><div style="font-size:.73rem;font-weight:600;color:#92400e;margin-bottom:.28rem">⚠ Reservas activas sin pago registrado</div><div style="font-size:.65rem;color:#a16207;margin-bottom:.5rem;line-height:1.5">Estas reservas están activas, pero no tienen ningún pago registrado. Revise si corresponde registrar pago pendiente, programado, retenido por plataforma o recibido.</div>${_rows}</div>`;
+        }
+      }
     }
   }
 }
