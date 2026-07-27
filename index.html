@@ -6039,10 +6039,10 @@ async function loadFinanzasPeriodo(){
   ]);
   // Reservas del período — base para ingresos y filtro de porPercibir
   const rArr=Array.isArray(reservas)?reservas:[];
-  const resIds=new Set(rArr.map(r=>r.id));
+  const resIds=new Set(rArr.filter(x=>!isCancelada(x)).map(x=>x.id));
   // Caja recibida: pagos recibidos en el mes (de cualquier reserva)
   const caja=Math.round(Array.isArray(recibidos)?recibidos.reduce((s,x)=>s+(parseFloat(x.amount_clp)||0),0):0);
-  // Por recibir al cierre: solo pagos de reservas del período que no llegaron antes del cierre
+  // Por recibir al cierre: solo pagos de reservas activas del período que no llegaron antes del cierre
   const pendientesFiltrados=Array.isArray(pendientesAlCierre)?pendientesAlCierre.filter(p=>resIds.has(p.reservation_id)):[];
   const porPercibir=Math.round(pendientesFiltrados.reduce((s,x)=>s+(parseFloat(x.amount_clp)||0),0));
   const gastosT=Math.round(Array.isArray(gastos)?gastos.reduce((s,x)=>s+(parseFloat(x.amount_clp)||0),0):0);
@@ -6150,11 +6150,11 @@ async function calcLiq(){
     sbGet('reservations',`check_in=gte.${fechaIni}&check_in=lte.${fechaFin}&order=check_in.asc`)
   ]);
   const rArr=Array.isArray(reservas)?reservas:[];
-  const resIds=new Set(rArr.map(r=>r.id));
+  const resIds=new Set(rArr.filter(x=>!isCancelada(x)).map(x=>x.id));
   const delMes=rArr.filter(x=>!isCancelada(x));
   // Caja recibida: pagos con payment_date_received dentro del mes
   const caja=Math.round(Array.isArray(recibidos)?recibidos.reduce((s,x)=>s+(parseFloat(x.amount_clp)||0),0):0);
-  // Por recibir al cierre: pagos de reservas del período no recibidos antes del cierre del mes
+  // Por recibir al cierre: pagos de reservas activas del período no recibidos antes del cierre del mes
   const pendFilt=Array.isArray(pendientesAlCierre)?pendientesAlCierre.filter(p=>resIds.has(p.reservation_id)):[];
   const porPercibir=Math.round(pendFilt.reduce((s,x)=>s+(parseFloat(x.amount_clp)||0),0));
   // Gastos del período: property_expenses del mes/año
