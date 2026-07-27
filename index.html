@@ -6121,7 +6121,7 @@ async function loadFinanzasPeriodo(){
             return `<div style="padding:.45rem 0;border-bottom:1px solid rgba(0,0,0,.05);font-size:.72rem;color:#5c3d00;line-height:1.5"><span style="font-weight:500;color:#3d2800">${r.guest_name||'—'}</span> · ${_fd(r.check_in)} → ${_fd(r.check_out)} · ${r.platform||'—'} · ${monto} · ${stLbl}<div style="font-size:.62rem;color:#a16207;margin-top:.1rem">Acción sugerida: registrar pago esperado</div></div>`;
           }).join('');
           _wEl.style.display='block';
-          _wEl.innerHTML=`<div style="padding:.65rem .9rem;background:#fffbeb;border:1px solid rgba(0,0,0,.07);border-left:3px solid #d97706;border-radius:.45rem"><div style="font-size:.73rem;font-weight:600;color:#92400e;margin-bottom:.28rem">⚠ Reservas activas sin pago registrado</div><div style="font-size:.65rem;color:#a16207;margin-bottom:.5rem;line-height:1.5">Estas reservas están activas, pero no tienen ningún pago registrado. Revise si corresponde registrar pago pendiente, programado, retenido por plataforma o recibido.</div>${_rows}</div>`;
+          _wEl.innerHTML=`<div style="padding:.65rem .9rem;background:#fef2f2;border:1px solid rgba(0,0,0,.07);border-left:3px solid #d97706;border-radius:.45rem"><div style="font-size:.73rem;font-weight:600;color:#92400e;margin-bottom:.28rem">⚠ Reservas activas sin pago registrado</div><div style="font-size:.65rem;color:#a16207;margin-bottom:.5rem;line-height:1.5">Estas reservas están activas, pero no tienen ningún pago registrado. Revise si corresponde registrar pago pendiente, programado, retenido por plataforma o recibido.</div>${_rows}</div>`;
         }
       }
     }
