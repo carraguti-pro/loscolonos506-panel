@@ -4724,18 +4724,40 @@ async function guardarPagoDetalle(resId,totalCLP){
   const clp=parseFloat(document.getElementById('np-clp')?.value)||null;
   const usd=parseFloat(document.getElementById('np-usd')?.value)||null;
   if(!clp&&!usd){toast('Ingrese un monto','err');return;}
+  const st=document.getElementById('np-st')?.value||'pendiente';
+  const frec=document.getElementById('np-frec')?.value||null;
+  // Fix A: recibido requires payment_date_received
+  if(st==='recibido'&&!frec){
+    toast('⚠ Debe ingresar la fecha de abono real para registrar un pago recibido.','err');
+    return;
+  }
   const payload={
     reservation_id:resId,
     payment_source:document.getElementById('np-src')?.value||null,
-    payment_status:document.getElementById('np-st')?.value||'pendiente',
+    payment_status:st,
     currency:document.getElementById('np-cur')?.value||'CLP',
     amount_clp:clp,
     amount_usd:usd,
     payment_date_scheduled:document.getElementById('np-fsch')?.value||null,
-    payment_date_received:document.getElementById('np-frec')?.value||null,
+    payment_date_received:frec,
     release_due_date:document.getElementById('np-rld')?.value||null,
     notes:document.getElementById('np-notes')?.value||null
   };
+  // Fix B: duplicate guard — fail closed if verification fails
+  const _exPagos=await sbGet('reservation_payments',`reservation_id=eq.${resId}`);
+  if(!Array.isArray(_exPagos)){
+    toast('⚠ No se pudo verificar si el pago ya existe. Actualice e intente nuevamente.','err');
+    return;
+  }
+  const _dup=_exPagos.some(e=>
+    parseFloat(e.amount_clp||0)===parseFloat(clp||0)&&
+    (e.payment_date_received||null)===(frec||null)&&
+    (e.payment_status||'pendiente')===st
+  );
+  if(_dup){
+    toast('⚠ Este pago ya parece estar registrado para esta reserva. Revise el detalle antes de duplicar.','err');
+    return;
+  }
   const r=await sbPost('reservation_payments',payload);
   if(r.status!==201&&!r.ok){
     const err=await r.text().catch(()=>'');
