@@ -97,7 +97,7 @@ function platformMeta(p) {
   return PLATFORM_META[p?.toLowerCase()] ?? { label: p, color: '#6b7280', dot: '⚪' };
 }
 
-function buildHtml({ today, windowEnd, daysAhead, byPlatform, feedErrors }) {
+function buildHtml({ today, windowEnd, daysAhead, byPlatform, feedErrors, adminAlertsHtml = '' }) {
   const hora = new Intl.DateTimeFormat('es-CL', {
     timeZone: CL_TZ, hour: '2-digit', minute: '2-digit'
   }).format(new Date());
@@ -158,6 +158,8 @@ function buildHtml({ today, windowEnd, daysAhead, byPlatform, feedErrors }) {
     ⚠️ <strong>Solo aviso iCal — revisar e ingresar manualmente en el Panel Los Colonos si corresponde.</strong><br>
     <span style="color:#6b7280">Este informe es de solo lectura. Los eventos iCal no se registran automáticamente. Cada evento debe evaluarse y crearse a mano en el panel si representa una reserva real.</span>
   </div>
+
+  ${adminAlertsHtml}
 
   ${feedErrorBlock}
 
@@ -282,8 +284,125 @@ export default async function handler() {
     }
   }
 
-  // 3. Build HTML and send via Resend
-  const html = buildHtml({ today, windowEnd, daysAhead, byPlatform, feedErrors });
+  // 3. Admin alerts: upcoming check-ins + payment semaphore (read-only, isolated)
+  let adminAlertsHtml = '';
+  try {
+    const _sbH = {
+      'apikey': SUPABASE_SERVICE_ROLE_KEY,
+      'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      'Accept': 'application/json',
+    };
+    const _limit48 = getChileDate(2);
+
+    // Query A: reservations with check-in in [today, today+2], excluding inactive statuses
+    const _resRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/reservations` +
+      `?check_in=gte.${today}&check_in=lte.${_limit48}` +
+      `&status=not.in.(cancelled,cancelada,expirada,bloqueada_admin)` +
+      `&select=id,guest_name,check_in,check_out,platform,total_usd,total_clp,status` +
+      `&order=check_in.asc`,
+      { headers: _sbH }
+    );
+    if (!_resRes.ok) throw new Error(`reservations HTTP ${_resRes.status}`);
+    const _upcoming = await _resRes.json();
+    if (!Array.isArray(_upcoming)) throw new Error('reservations: unexpected response');
+    console.log(`[ical-alerts] admin-alerts: ${_upcoming.length} upcoming check-in(s) found`);
+
+    // Query B: payment rows for upcoming reservations
+    const _pmtByRes = {};
+    if (_upcoming.length > 0) {
+      const _ids = _upcoming.map(r => r.id).join(',');
+      const _pmtRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/reservation_payments` +
+        `?reservation_id=in.(${_ids})` +
+        `&select=reservation_id,payment_status,amount_clp,payment_date_received,payment_method`,
+        { headers: _sbH }
+      );
+      const _pmtRows = _pmtRes.ok ? await _pmtRes.json() : [];
+      if (Array.isArray(_pmtRows)) {
+        for (const p of _pmtRows) {
+          if (!_pmtByRes[p.reservation_id]) _pmtByRes[p.reservation_id] = [];
+          _pmtByRes[p.reservation_id].push(p);
+        }
+      }
+    }
+
+    // Query C: payments received today (any reservation)
+    const _recRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/reservation_payments` +
+      `?payment_status=eq.recibido&payment_date_received=gte.${today}` +
+      `&select=reservation_id,amount_clp,payment_date_received,payment_method` +
+      `&order=payment_date_received.desc&limit=10`,
+      { headers: _sbH }
+    );
+    const _recentPmts = _recRes.ok ? (await _recRes.json() ?? []) : [];
+
+    // Helpers
+    const _mn = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+    const _fd = iso => {
+      if (!iso) return '—';
+      const [y, mo, dy] = iso.split('-');
+      return `${parseInt(dy)} ${_mn[parseInt(mo)-1]} ${String(y).slice(2)}`;
+    };
+    const _money = r => {
+      if (r.total_usd) return `US$${parseFloat(r.total_usd).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+      if (r.total_clp) return `$${Math.round(parseFloat(r.total_clp)).toLocaleString('es-CL')}`;
+      return '—';
+    };
+    const _clp = n => n ? `$${Math.round(parseFloat(n)).toLocaleString('es-CL')}` : '—';
+
+    // Build check-in rows with semaphore
+    let _checkinRows;
+    if (_upcoming.length === 0) {
+      _checkinRows = `<p style="font-size:13px;color:#6b7280;margin:4px 0 0">Sin check-ins en las próximas 48 horas.</p>`;
+    } else {
+      _checkinRows = _upcoming.map(r => {
+        const pmts = _pmtByRes[r.id] || [];
+        const sem = pmts.length === 0
+          ? { icon: '🔴', label: 'Sin pago registrado' }
+          : pmts.some(p => p.payment_status === 'recibido')
+            ? { icon: '🟢', label: 'Pago recibido' }
+            : { icon: '🟡', label: 'Pago pendiente / programado / retenido' };
+        return `<div style="padding:7px 0;border-bottom:1px solid #e5e7eb;font-size:13px;line-height:1.5">` +
+          `${sem.icon} <strong>${r.guest_name || '—'}</strong> · ${_fd(r.check_in)} → ${_fd(r.check_out)} · ${r.platform || '—'} · ${_money(r)}` +
+          `<span style="color:#6b7280;font-size:12px"> · ${sem.label}</span>` +
+          `</div>`;
+      }).join('');
+    }
+
+    // Build recent payments subsection (guest name from already-fetched _upcoming when possible)
+    const _resMap = Object.fromEntries(_upcoming.map(r => [r.id, r]));
+    let _recentBlock = '';
+    if (Array.isArray(_recentPmts) && _recentPmts.length > 0) {
+      const _rItems = _recentPmts.map(p => {
+        const linked = _resMap[p.reservation_id];
+        const guest = linked ? (linked.guest_name || '—') : `#${String(p.reservation_id).slice(0, 8)}`;
+        const plat  = linked ? ` · ${linked.platform || '—'}` : '';
+        const meth  = p.payment_method ? ` · ${p.payment_method}` : '';
+        return `<div style="font-size:12px;color:#374151;padding:4px 0;border-bottom:1px solid #f3f4f6">` +
+          `✅ <strong>${guest}</strong>${plat} · ${_clp(p.amount_clp)}${meth}</div>`;
+      }).join('');
+      _recentBlock = `<div style="margin-top:14px">` +
+        `<div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:6px">Pagos recibidos hoy</div>` +
+        `${_rItems}</div>`;
+    }
+
+    adminAlertsHtml =
+      `<div style="background:#f0fdf4;border-left:4px solid #16a34a;padding:12px 16px;margin-bottom:22px;border-radius:4px">` +
+      `<div style="font-size:14px;font-weight:700;color:#14532d;margin-bottom:10px">🚦 Avisos Admin</div>` +
+      `<div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:6px">Check-ins próximas 48 horas</div>` +
+      `${_checkinRows}${_recentBlock}</div>`;
+
+  } catch (err) {
+    const _em = err instanceof Error ? err.message : JSON.stringify(err);
+    console.error('[ical-alerts] Admin alerts error:', _em);
+    adminAlertsHtml =
+      `<div style="background:#fff7ed;border-left:4px solid #f97316;padding:10px 14px;margin-bottom:18px;border-radius:4px;font-size:13px">` +
+      `⚠ No se pudieron cargar avisos internos. Revisar panel.</div>`;
+  }
+
+  // 4. Build HTML and send via Resend
+  const html = buildHtml({ today, windowEnd, daysAhead, byPlatform, feedErrors, adminAlertsHtml });
   const totalEvents = Object.values(byPlatform).reduce((s, evs) => s + evs.length, 0);
 
   console.log('[ical-alerts] resend to:', JSON.stringify(recipients));
