@@ -2022,6 +2022,35 @@ Las instrucciones activas aparecen sobre la tabla de reservas.
             <span id="nd-status" style="font-size:.58rem;color:var(--muted)"></span>
           </div>
         </div>
+        <!-- ═══ DATOS DE TRANSFERENCIA BANCARIA (solo Admin) ═══ -->
+        <div class="card" id="card-payment-settings" style="margin-top:.9rem;display:none">
+          <div class="card-title" style="margin-bottom:.15rem">Datos de transferencia bancaria</div>
+          <div style="font-size:.56rem;color:var(--muted);margin-bottom:1rem;line-height:1.45">Datos bancarios enviados a huéspedes que eligen transferencia. Solo visible para Admin.</div>
+          <div class="form-row">
+            <div class="fg"><label class="fl">Titular</label><input class="fi" id="pay-bank-holder" placeholder="Nombre del titular de la cuenta"></div>
+            <div class="fg"><label class="fl">RUT</label><input class="fi" id="pay-bank-rut" placeholder="12.345.678-9"></div>
+          </div>
+          <div class="form-row">
+            <div class="fg"><label class="fl">Banco</label><input class="fi" id="pay-bank-name" placeholder="Banco Estado"></div>
+            <div class="fg"><label class="fl">Tipo de cuenta</label><input class="fi" id="pay-bank-account-type" placeholder="Cuenta Corriente"></div>
+          </div>
+          <div class="form-row">
+            <div class="fg"><label class="fl">Número de cuenta</label><input class="fi" id="pay-bank-account-number" placeholder="0000000000"></div>
+            <div class="fg"><label class="fl">Email para transferencia</label><input class="fi" type="email" id="pay-bank-email" placeholder="pagos@ejemplo.cl"></div>
+          </div>
+          <div class="form-row">
+            <div class="fg"><label class="fl">Glosa / prefijo</label><input class="fi" id="pay-transfer-subject-prefix" placeholder="Reserva Oasis Los Colonos"></div>
+            <div class="fg" style="display:flex;align-items:center;gap:.55rem;margin-top:1.1rem">
+              <input type="checkbox" id="pay-settings-active" style="width:1rem;height:1rem;cursor:pointer;accent-color:var(--gold)">
+              <label for="pay-settings-active" class="fl" style="margin-bottom:0;cursor:pointer;user-select:none">Activo</label>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:.7rem;margin-top:.2rem">
+            <button class="btn btn-ink" id="pay-settings-save-btn" onclick="savePaymentSettings()">Guardar datos de transferencia</button>
+            <span id="pay-settings-status" style="font-size:.58rem;color:var(--muted)"></span>
+          </div>
+          <div style="font-size:.56rem;color:var(--muted);margin-top:.65rem;line-height:1.5" id="pay-settings-ts"></div>
+        </div>
       </div>
 
       <div class="page" id="page-reportes-ops">
@@ -2732,7 +2761,7 @@ function showPage(p){
     loadFinances().then(()=>loadFinanzasPeriodo());loadGastosPeriodo();loadCajaResultados();
   }
   if(p==='liquidaciones')calcLiq();
-  if(p==='config'){loadPricingConfig();loadPricingRules();}
+  if(p==='config'){loadPricingConfig();loadPricingRules();renderPaymentSettingsConfig();}
   if(p==='reportes-ops')loadOpsReports();
   if(p==='solicitudes-pago')loadSolicitudesPago();
   if(p==='resumen-ops')loadResumenOps();
@@ -3880,13 +3909,93 @@ async function loadPaymentSettings(){
     const r=await fetch(`${SB}/rest/v1/property_payment_settings?property_code=eq.${PAYMENT_PROPERTY_CODE}&limit=1`,{
       headers:{'apikey':KEY,'Authorization':'Bearer '+CU.access_token,'Accept':'application/json'}
     });
-    if(!r.ok){console.warn('[Panel] loadPaymentSettings HTTP',r.status);PAYMENT_SETTINGS=null;PAYMENT_SETTINGS_LOADED=true;return;}
+    if(!r.ok){console.warn('[Panel] loadPaymentSettings HTTP',r.status);PAYMENT_SETTINGS=null;PAYMENT_SETTINGS_LOADED=true;renderPaymentSettingsConfig();return;}
     const rows=await r.json();
     PAYMENT_SETTINGS=Array.isArray(rows)&&rows.length>0?rows[0]:null;
     PAYMENT_SETTINGS_LOADED=true;
+    renderPaymentSettingsConfig();
   }catch(e){
     console.warn('[Panel] loadPaymentSettings error:',e.message);
     PAYMENT_SETTINGS=null;PAYMENT_SETTINGS_LOADED=true;
+    renderPaymentSettingsConfig();
+  }
+}
+function renderPaymentSettingsConfig(){
+  const card=document.getElementById('card-payment-settings');
+  if(!card)return;
+  if(!CU||CU.role!=='admin'){card.style.display='none';return;}
+  card.style.display='';
+  const statusEl=document.getElementById('pay-settings-status');
+  const saveBtn=document.getElementById('pay-settings-save-btn');
+  const inputs=card.querySelectorAll('input');
+  if(!PAYMENT_SETTINGS_LOADED){
+    inputs.forEach(el=>{el.disabled=true;});
+    if(saveBtn)saveBtn.disabled=true;
+    if(statusEl)statusEl.textContent='Cargando datos de transferencia…';
+    return;
+  }
+  if(!PAYMENT_SETTINGS){
+    inputs.forEach(el=>{el.disabled=true;});
+    if(saveBtn)saveBtn.disabled=true;
+    if(statusEl)statusEl.textContent='Configuración de transferencia no encontrada. Revise la fila oasis-506a.';
+    return;
+  }
+  inputs.forEach(el=>{el.disabled=false;});
+  if(saveBtn)saveBtn.disabled=false;
+  if(statusEl)statusEl.textContent='';
+  const s=PAYMENT_SETTINGS;
+  const sv=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
+  sv('pay-bank-holder',            s.bank_holder);
+  sv('pay-bank-rut',               s.bank_rut);
+  sv('pay-bank-name',              s.bank_name);
+  sv('pay-bank-account-type',      s.bank_account_type);
+  sv('pay-bank-account-number',    s.bank_account_number);
+  sv('pay-bank-email',             s.bank_email);
+  sv('pay-transfer-subject-prefix',s.transfer_subject_prefix||'Reserva Oasis Los Colonos');
+  const activeEl=document.getElementById('pay-settings-active');
+  if(activeEl)activeEl.checked=s.active!==false;
+  const tsEl=document.getElementById('pay-settings-ts');
+  if(tsEl)tsEl.textContent=s.updated_at?'Última actualización: '+new Date(s.updated_at).toLocaleString('es-CL',{dateStyle:'short',timeStyle:'short'})+(s.updated_by?' — '+s.updated_by:''):'';
+}
+async function savePaymentSettings(){
+  if(!requireRole(['admin']))return;
+  if(!CU.access_token){toast('Sesión no autenticada. Recargue el panel.','err');return;}
+  if(!PAYMENT_SETTINGS_LOADED){toast('Datos de transferencia aún cargando. Intente nuevamente.','err');return;}
+  if(!PAYMENT_SETTINGS){toast('Configuración de transferencia no encontrada.','err');return;}
+  const statusEl=document.getElementById('pay-settings-status');
+  if(statusEl)statusEl.textContent='Guardando…';
+  const payload={
+    bank_holder:             (document.getElementById('pay-bank-holder')?.value||'').trim()||null,
+    bank_rut:                (document.getElementById('pay-bank-rut')?.value||'').trim()||null,
+    bank_name:               (document.getElementById('pay-bank-name')?.value||'').trim()||null,
+    bank_account_type:       (document.getElementById('pay-bank-account-type')?.value||'').trim()||null,
+    bank_account_number:     (document.getElementById('pay-bank-account-number')?.value||'').trim()||null,
+    bank_email:              (document.getElementById('pay-bank-email')?.value||'').trim()||null,
+    transfer_subject_prefix: (document.getElementById('pay-transfer-subject-prefix')?.value||'').trim()||'Reserva Oasis Los Colonos',
+    active:                  document.getElementById('pay-settings-active')?.checked!==false,
+    updated_at:              new Date().toISOString(),
+    updated_by:              CU.email||'admin'
+  };
+  try{
+    const r=await fetch(`${SB}/rest/v1/property_payment_settings?property_code=eq.${PAYMENT_PROPERTY_CODE}`,{
+      method:'PATCH',
+      headers:{...sbFH(),'Authorization':'Bearer '+CU.access_token,'Prefer':'return=minimal,count=exact'},
+      body:JSON.stringify(payload)
+    });
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const rawRange=r.headers.get('content-range');
+    if(rawRange){
+      const cnt=parseInt(rawRange.split('/').pop()||'0');
+      if(cnt===0){toast('No se encontró la fila de configuración. Contacte al administrador.','err');if(statusEl)statusEl.textContent='';return;}
+    }
+    toast('Datos de transferencia guardados','ok');
+    if(statusEl)statusEl.textContent='';
+    await loadPaymentSettings();
+    renderPaymentSettingsConfig();
+  }catch(e){
+    toast('Error al guardar datos de transferencia.','err');
+    if(statusEl)statusEl.textContent='';
+    console.warn('[Panel] savePaymentSettings error:',e.message);
   }
 }
 async function savePricing(){
