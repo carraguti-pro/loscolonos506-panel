@@ -2549,6 +2549,8 @@ let PANEL_CLEANING_FEE=45; // sincronizado con property_pricing_settings al carg
 let ADM_PRICE_CACHE=new Map(); // 'YYYY-MM-DD' → {price_usd,min_nights,source,rule_name}
 let ADM_PRICE_LOADED=false;
 let DAY_PRICE_EDIT_DATE=null; // fecha activa en modal ajuste de precio
+const PAYMENT_PROPERTY_CODE='oasis-506a';
+let PAYMENT_SETTINGS=null,PAYMENT_SETTINGS_LOADED=false;
 
 const sbGet=async(t,q='')=>{
   try{
@@ -2699,6 +2701,7 @@ function openAdmin(){
   document.getElementById('topbar-date').textContent=new Date().toLocaleDateString('es-CL',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   loadDashboard();
   loadExtBlocks(); // precarga bloqueos iCal para que el Calendario los muestre al abrirlo
+  loadPaymentSettings();
 }
 async function openServicios(){
   if(!requireRole(['admin','staff']))return;
@@ -3869,6 +3872,21 @@ async function loadPricingConfig(){
   }catch(e){
     if(status)status.textContent='Error al cargar tarifas';
     console.error('[pricing config]',e);
+  }
+}
+async function loadPaymentSettings(){
+  if(!CU||CU.role!=='admin'||!CU.access_token)return;
+  try{
+    const r=await fetch(`${SB}/rest/v1/property_payment_settings?property_code=eq.${PAYMENT_PROPERTY_CODE}&limit=1`,{
+      headers:{'apikey':KEY,'Authorization':'Bearer '+CU.access_token,'Accept':'application/json'}
+    });
+    if(!r.ok){console.warn('[Panel] loadPaymentSettings HTTP',r.status);PAYMENT_SETTINGS=null;PAYMENT_SETTINGS_LOADED=true;return;}
+    const rows=await r.json();
+    PAYMENT_SETTINGS=Array.isArray(rows)&&rows.length>0?rows[0]:null;
+    PAYMENT_SETTINGS_LOADED=true;
+  }catch(e){
+    console.warn('[Panel] loadPaymentSettings error:',e.message);
+    PAYMENT_SETTINGS=null;PAYMENT_SETTINGS_LOADED=true;
   }
 }
 async function savePricing(){
