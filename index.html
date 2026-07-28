@@ -4658,6 +4658,8 @@ async function loadPagosDetalle(resId,totalCLP,res){
   const esBooking=(res.platform||'')==='Booking';
   const comProv=esBooking?Math.round(parseFloat(res.platform_commission_clp)||0):0;
   const netEsp=esBooking?Math.round(parseFloat(res.expected_net_clp)||(totalCLP-comProv)):0;
+  const _cobranzaLbl=(()=>{if(caja>0&&porPercibir>0)return`Abonos recibidos: ${fmtCLP(caja)} · Por percibir: ${fmtCLP(porPercibir)}`;if(caja>0)return`Abonos recibidos: ${fmtCLP(caja)}`;if(porPercibir>0)return`Pagos por percibir: ${fmtCLP(porPercibir)} · Sin abonos recibidos`;return'';})();
+  const _cobranzaPill=_cobranzaLbl?`<div style="font-size:.6rem;color:var(--muted);padding:.28rem 0 .3rem;margin-bottom:.22rem;line-height:1.4">Según pagos registrados · ${_cobranzaLbl}</div>`:'';
   if(sumEl){
     if(esBooking&&comProv>0){
       // 6 celdas (3 filas × 2 col): bruto | provisión / neto post-com | caja / por percibir | saldo vs neto
@@ -4665,7 +4667,7 @@ async function loadPagosDetalle(resId,totalCLP,res){
       const saldoColor=saldoNeto>100?'var(--warning)':saldoNeto<-100?'var(--gold)':'var(--success)';
       const saldoLbl=saldoNeto<-100?'Recibido sobre el neto':saldoNeto>100?'Pendiente vs neto':'Liquidado';
       const saldoDisplay=Math.abs(saldoNeto)<100?'—':(saldoNeto<0?'+':'')+fmtCLP(Math.abs(saldoNeto));
-      sumEl.innerHTML=`<div class="det-sum-grid">
+      sumEl.innerHTML=`${_cobranzaPill}<div class="det-sum-grid">
         <div class="det-sum-cell"><span class="det-sum-lbl">Total bruto CLP</span><span class="det-sum-val">${fmtCLP(totalCLP)}</span></div>
         <div class="det-sum-cell"><span class="det-sum-lbl">Provisión comisión Booking</span><span class="det-sum-val" style="color:var(--danger)">−${fmtCLP(comProv)}</span></div>
         <div class="det-sum-cell"><span class="det-sum-lbl">Neto esperado post-comisión</span><span class="det-sum-val" style="color:var(--success)">${fmtCLP(netEsp)}</span></div>
@@ -4675,7 +4677,7 @@ async function loadPagosDetalle(resId,totalCLP,res){
       </div>`;
     }else{
       // 4 celdas — comportamiento original (Airbnb, Vrbo, Directo, etc.)
-      sumEl.innerHTML=`<div class="det-sum-grid">
+      sumEl.innerHTML=`${_cobranzaPill}<div class="det-sum-grid">
         <div class="det-sum-cell"><span class="det-sum-lbl">Total estimado CLP</span><span class="det-sum-val">${fmtCLP(totalCLP)}</span></div>
         <div class="det-sum-cell"><span class="det-sum-lbl">Caja recibida</span><span class="det-sum-val" style="color:var(--success)">${fmtCLP(caja)}</span></div>
         <div class="det-sum-cell"><span class="det-sum-lbl">Por percibir</span><span class="det-sum-val" style="color:var(--warning)">${fmtCLP(porPercibir)}</span></div>
@@ -4684,8 +4686,9 @@ async function loadPagosDetalle(resId,totalCLP,res){
     }
   }
   if(p.length===0){
-    const _bkWarn=(res.platform==='Booking')&&(res.status==='confirmada');
-    listEl.innerHTML=`${_bkWarn?'<div style="background:#fef2f2;border-left:3px solid #dc2626;padding:.5rem .65rem;border-radius:.3rem;font-size:.7rem;line-height:1.5;color:#991b1b;margin-bottom:.5rem">⚠ <strong>Reserva Booking confirmada sin pagos registrados.</strong> Coordinar cobro con el huésped antes del ingreso.</div>':''}<div class="det-pagos-empty">Sin pagos registrados</div>`;
+    const DIRECT_PAYMENT_PLATFORMS=['Booking','Directo','Web Directa','WhatsApp','Teléfono'];
+    const _directPaymentWarn=DIRECT_PAYMENT_PLATFORMS.includes(res.platform||'')&&(res.status==='confirmada');
+    listEl.innerHTML=`${_directPaymentWarn?'<div style="background:#fef2f2;border-left:3px solid #dc2626;padding:.5rem .65rem;border-radius:.3rem;font-size:.7rem;line-height:1.5;color:#991b1b;margin-bottom:.5rem">⚠ <strong>Reserva confirmada sin pagos registrados.</strong> Coordinar cobro con el huésped antes del ingreso.</div>':''}<div class="det-pagos-empty">Sin pagos registrados</div>`;
     return;
   }
   const ST={recibido:'✅ Recibido',programado:'📅 Programado',pendiente:'⏳ Pendiente',retenido_por_plataforma:'🔒 Retenido',anulado:'❌ Anulado',reembolsado:'↩ Reembolsado'};
