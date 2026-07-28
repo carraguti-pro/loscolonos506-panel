@@ -2028,11 +2028,40 @@ Las instrucciones activas aparecen sobre la tabla de reservas.
           <div style="font-size:.56rem;color:var(--muted);margin-bottom:1rem;line-height:1.45">Datos bancarios enviados a huéspedes que eligen transferencia. Solo visible para Admin.</div>
           <div class="form-row">
             <div class="fg"><label class="fl">Titular</label><input class="fi" id="pay-bank-holder" placeholder="Nombre del titular de la cuenta"></div>
-            <div class="fg"><label class="fl">RUT</label><input class="fi" id="pay-bank-rut" placeholder="12.345.678-9"></div>
+            <div class="fg"><label class="fl">RUT</label><input class="fi" id="pay-bank-rut" placeholder="12.345.678-5" onblur="payRutFormat(this)"></div>
           </div>
           <div class="form-row">
-            <div class="fg"><label class="fl">Banco</label><input class="fi" id="pay-bank-name" placeholder="Banco Estado"></div>
-            <div class="fg"><label class="fl">Tipo de cuenta</label><input class="fi" id="pay-bank-account-type" placeholder="Cuenta Corriente"></div>
+            <div class="fg"><label class="fl">Banco</label>
+              <select class="fi" id="pay-bank-name">
+                <option value="">Seleccionar</option>
+                <option>Banco de Chile</option>
+                <option>Banco BICE</option>
+                <option>Banco Estado</option>
+                <option>Banco Falabella</option>
+                <option>Banco Santander</option>
+                <option>Banco BCI</option>
+                <option>Banco Itaú</option>
+                <option>Scotiabank</option>
+                <option>Banco Security</option>
+                <option>Banco Internacional</option>
+                <option>Banco Consorcio</option>
+                <option>Banco Ripley</option>
+                <option>Banco Edwards</option>
+                <option>Banco del Desarrollo</option>
+                <option>Coopeuch</option>
+                <option>Otro</option>
+              </select>
+            </div>
+            <div class="fg"><label class="fl">Tipo de cuenta</label>
+              <select class="fi" id="pay-bank-account-type">
+                <option value="">Seleccionar</option>
+                <option>Cuenta Corriente</option>
+                <option>Cuenta Vista</option>
+                <option>Cuenta de Ahorro</option>
+                <option>Cuenta RUT</option>
+                <option>Otra</option>
+              </select>
+            </div>
           </div>
           <div class="form-row">
             <div class="fg"><label class="fl">Número de cuenta</label><input class="fi" id="pay-bank-account-number" placeholder="0000000000"></div>
@@ -3920,6 +3949,49 @@ async function loadPaymentSettings(){
     renderPaymentSettingsConfig();
   }
 }
+function payRutClean(v){return(v||'').replace(/[^0-9kK]/g,'');}
+function payRutFormat(elOrStr){
+  const isEl=typeof elOrStr==='object'&&elOrStr!==null;
+  const raw=isEl?elOrStr.value:elOrStr;
+  const c=payRutClean(raw).toUpperCase();
+  if(c.length<2){if(isEl)elOrStr.value=c;return c;}
+  const body=c.slice(0,-1);
+  const dv=c.slice(-1);
+  const fmt=body.replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+  const result=fmt+'-'+dv;
+  if(isEl)elOrStr.value=result;
+  return result;
+}
+function payRutValid(v){
+  const c=payRutClean(v).toUpperCase();
+  if(c.length<2)return false;
+  const body=c.slice(0,-1);
+  const dv=c.slice(-1);
+  if(!/^\d+$/.test(body))return false;
+  let sum=0,mult=2;
+  for(let i=body.length-1;i>=0;i--){
+    sum+=parseInt(body[i])*mult;
+    mult=mult===7?2:mult+1;
+  }
+  const rem=11-(sum%11);
+  const expected=rem===11?'0':rem===10?'K':String(rem);
+  return dv===expected;
+}
+function setPaySelect(id,val,dataKey){
+  const el=document.getElementById(id);
+  if(!el)return;
+  Array.from(el.options).filter(o=>o.dataset[dataKey]==='true').forEach(o=>o.remove());
+  if(!val){el.value='';return;}
+  const found=Array.from(el.options).some(o=>o.value===val||o.textContent===val);
+  if(!found){
+    const tmp=document.createElement('option');
+    tmp.value=val;
+    tmp.textContent='Otro: '+val;
+    tmp.dataset[dataKey]='true';
+    el.appendChild(tmp);
+  }
+  el.value=val;
+}
 function renderPaymentSettingsConfig(){
   const card=document.getElementById('card-payment-settings');
   if(!card)return;
@@ -3927,28 +3999,29 @@ function renderPaymentSettingsConfig(){
   card.style.display='';
   const statusEl=document.getElementById('pay-settings-status');
   const saveBtn=document.getElementById('pay-settings-save-btn');
-  const inputs=card.querySelectorAll('input');
+  const controls=card.querySelectorAll('input,select');
   if(!PAYMENT_SETTINGS_LOADED){
-    inputs.forEach(el=>{el.disabled=true;});
+    controls.forEach(el=>{el.disabled=true;});
     if(saveBtn)saveBtn.disabled=true;
     if(statusEl)statusEl.textContent='Cargando datos de transferencia…';
     return;
   }
   if(!PAYMENT_SETTINGS){
-    inputs.forEach(el=>{el.disabled=true;});
+    controls.forEach(el=>{el.disabled=true;});
     if(saveBtn)saveBtn.disabled=true;
     if(statusEl)statusEl.textContent='Configuración de transferencia no encontrada. Revise la fila oasis-506a.';
     return;
   }
-  inputs.forEach(el=>{el.disabled=false;});
+  controls.forEach(el=>{el.disabled=false;});
   if(saveBtn)saveBtn.disabled=false;
   if(statusEl)statusEl.textContent='';
   const s=PAYMENT_SETTINGS;
   const sv=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
   sv('pay-bank-holder',            s.bank_holder);
-  sv('pay-bank-rut',               s.bank_rut);
-  sv('pay-bank-name',              s.bank_name);
-  sv('pay-bank-account-type',      s.bank_account_type);
+  const rutEl=document.getElementById('pay-bank-rut');
+  if(rutEl)rutEl.value=s.bank_rut?payRutFormat(s.bank_rut):'';
+  setPaySelect('pay-bank-name',         s.bank_name,         'tempBankName');
+  setPaySelect('pay-bank-account-type', s.bank_account_type, 'tempAccountType');
   sv('pay-bank-account-number',    s.bank_account_number);
   sv('pay-bank-email',             s.bank_email);
   sv('pay-transfer-subject-prefix',s.transfer_subject_prefix||'Reserva Oasis Los Colonos');
@@ -3964,9 +4037,15 @@ async function savePaymentSettings(){
   if(!PAYMENT_SETTINGS){toast('Configuración de transferencia no encontrada.','err');return;}
   const statusEl=document.getElementById('pay-settings-status');
   if(statusEl)statusEl.textContent='Guardando…';
+  const rawRut=(document.getElementById('pay-bank-rut')?.value||'').trim();
+  if(rawRut&&!payRutValid(rawRut)){
+    toast('RUT inválido. Verifique el dígito verificador.','err');
+    if(statusEl)statusEl.textContent='';
+    return;
+  }
   const payload={
     bank_holder:             (document.getElementById('pay-bank-holder')?.value||'').trim()||null,
-    bank_rut:                (document.getElementById('pay-bank-rut')?.value||'').trim()||null,
+    bank_rut:                rawRut?payRutFormat(rawRut):null,
     bank_name:               (document.getElementById('pay-bank-name')?.value||'').trim()||null,
     bank_account_type:       (document.getElementById('pay-bank-account-type')?.value||'').trim()||null,
     bank_account_number:     (document.getElementById('pay-bank-account-number')?.value||'').trim()||null,
