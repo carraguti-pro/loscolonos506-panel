@@ -4625,6 +4625,7 @@ async function verDet(id){
       <div id="det-pagos-summary"></div>
       <div id="det-pagos-list"><div style="color:var(--muted);font-size:.75rem;padding:.5rem 0">Cargando pagos…</div></div>
       <button type="button" class="btn-reg-pago" onclick="showDetPagoForm('${r.id}',${totalCLP})">+ Registrar pago</button>
+      ${r.platform==='Booking'?`<button type="button" class="btn-reg-pago" style="border-color:rgba(0,53,128,.35);color:#003580;background:rgba(0,53,128,.04);margin-top:.28rem" onclick="copyBkPayMsg('${r.id}')">📋 Copiar mensaje de pago Booking</button>`:''}
       <div id="det-pago-form" style="display:none;margin-top:.5rem"></div>
     </div>`;
   document.getElementById('det-ft').innerHTML=`
@@ -4702,6 +4703,28 @@ async function loadPagosDetalle(resId,totalCLP,res){
     </div>
     ${x.notes?`<div class="det-pago-note">${x.notes}</div>`:''}
   </div>`).join('');
+}
+function copyBkPayMsg(id){
+  const r=RES.find(x=>x.id===id);if(!r)return;
+  const tc=parseFloat(r.exchange_rate_used||0);
+  const usd=parseFloat(r.total_usd||0);
+  const clp=parseFloat(r.total_clp||0);
+  if(!tc||!usd||!clp){toast('No se puede generar el mensaje: faltan valores guardados de la reserva.','err');return;}
+  const nights=r.nights||calcN(r.check_in,r.check_out);
+  const totalUSD=usd.toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const tcFmt='$'+tc.toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const msg='Hola '+(r.guest_name||'[nombre]')+', muy buenas tardes.\n\nJunto con saludarte, confirmamos el detalle de tu reserva en Oasis Los Colonos, Puerto Varas:\n\nEstadía: desde el '+fmtD(r.check_in)+' al '+fmtD(r.check_out)+'.\nNoches: '+nights+'.\nValor total informado para la reserva: US$'+totalUSD+'.\nEquivalente referencial en pesos chilenos: '+fmtCLP(clp)+' CLP, considerando tipo de cambio '+tcFmt+'.\n\nTe agradeceremos confirmar que recibiste y estás de acuerdo con el detalle y valor indicado.\n\nEl pago se coordina directamente con administración y puede realizarse mediante una de estas opciones:\n\n1. Link de pago Mercado Pago.\n2. Transferencia bancaria.\n\nPor favor indícanos cuál alternativa prefieres y, una vez confirmado, te enviaremos el link de pago o los datos bancarios correspondientes.\n\nQuedamos atentos para ayudarte con cualquier duda y coordinar tu llegada.\n\nSaludos cordiales,\nReservas Ferran Propiedades';
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(msg).then(()=>toast('📋 Mensaje copiado al portapapeles','ok')).catch(()=>_bkMsgFallback(msg));
+  }else{_bkMsgFallback(msg);}
+}
+function _bkMsgFallback(msg){
+  const ta=document.createElement('textarea');
+  ta.value=msg;ta.style.cssText='position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+  document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');toast('📋 Mensaje copiado','ok');}
+  catch(e){prompt('Copiar manualmente (Ctrl+C / Cmd+C):',msg);}
+  document.body.removeChild(ta);
 }
 function showDetPagoForm(resId,totalCLP){
   const form=document.getElementById('det-pago-form');if(!form)return;
