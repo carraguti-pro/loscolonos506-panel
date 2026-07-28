@@ -2228,29 +2228,33 @@ Las instrucciones activas aparecen sobre la tabla de reservas.
       <div id="r-longestay-rate-hint" style="display:none"></div>
 
       <!-- ═══ B · PLATAFORMA DESCUENTA ═══ -->
-      <div id="r-plat-desc-lbl" style="font-size:.43rem;letter-spacing:.28em;text-transform:uppercase;color:var(--gold);font-weight:600;padding:.5rem 0 .22rem;border-bottom:1px solid rgba(201,168,76,.18);margin-bottom:.5rem">Plataforma descuenta</div>
-      <div class="form-row" id="r-com-usd-wrap" style="display:none">
-        <div class="fg"><label class="fl">Comisión Booking USD</label><input type="number" class="fi" id="r-com-usd" placeholder="0.00" step="0.01" min="0" oninput="onComUsdChange()"></div>
-        <div class="fg"><div style="font-size:.53rem;color:var(--muted);line-height:1.4;margin-top:1.1rem">Ingresa aquí la comisión real que informa Booking. Este valor manda sobre el porcentaje.</div></div>
-      </div>
-      <div class="form-row">
-        <div class="fg"><label class="fl" id="r-com-pct-lbl">Comisión plataforma %</label><input type="number" class="fi" id="r-com-pct" value="0" min="0" max="100" step="0.1" oninput="onComPctChange()"></div>
-        <div class="fg"><label class="fl">Comisión real CLP</label><input type="text" class="fi" id="r-com-clp" placeholder="Monto real según liquidación" oninput="this.dataset.manual='1';recalcFinanzas()" onblur="fmtClpOnBlur(this)"></div>
-      </div>
-      <div id="r-com-pct-hint" style="display:none;font-size:.53rem;color:var(--muted);margin:-.3rem 0 .55rem;line-height:1.4">Solo se usa si Comisi&#x00f3;n Booking USD est&#x00e1; en 0.</div>
-      <div class="form-row">
-        <div class="fg"><label class="fl">Impuesto s/comisión %</label><input type="number" class="fi" id="r-com-tax-pct" value="0" min="0" step="0.1" oninput="onComTaxPctChange()"></div>
-        <div class="fg"><label class="fl">Impuesto real CLP</label><input type="text" class="fi" id="r-com-tax-clp" placeholder="Monto real según liquidación" oninput="recalcFinanzas()" onblur="fmtClpOnBlur(this)"></div>
-      </div>
-      <div class="form-row">
-        <div class="fg"><label class="fl">Ajuste Airbnb CLP</label><input type="text" class="fi" id="r-airbnb-adj-clp" placeholder="$0" oninput="recalcFinanzas()" onblur="fmtClpOnBlur(this)"></div>
-        <div class="fg"><div style="font-size:.53rem;color:var(--muted);line-height:1.4;margin-top:1.1rem">Descuento Airbnb sobre el neto (ej: retenci&#x00f3;n de servicio). Valor positivo = se descuenta.</div></div>
-      </div>
-      <div class="form-row">
-        <div class="fg"><label class="fl">Otros cargos plataforma CLP</label><input type="text" class="fi" id="r-plat-extra-clp" placeholder="$0" oninput="recalcFinanzas()" onblur="fmtClpOnBlur(this)"></div>
-        <div class="fg"><label class="fl">Costo total plataforma CLP</label><input class="fi" id="r-plat-total-clp" readonly style="background:rgba(0,0,0,.025);color:var(--muted);cursor:default" tabindex="-1" placeholder="—"></div>
-      </div>
-      <div style="font-size:.56rem;color:var(--muted);margin:-.28rem 0 .6rem;line-height:1.45">Los porcentajes son referenciales. Registra el monto real según liquidación de la plataforma.</div>
+      <details id="r-plat-section" style="margin:.2rem 0 .5rem">
+        <summary style="cursor:pointer;padding:.5rem 0 .22rem;border-bottom:1px solid rgba(201,168,76,.18);margin-bottom:.5rem;user-select:none">
+          <span id="r-plat-desc-lbl" style="font-size:.43rem;letter-spacing:.28em;text-transform:uppercase;color:var(--gold);font-weight:600">Plataforma descuenta</span><span style="font-size:.5rem;color:var(--muted);font-weight:400;letter-spacing:.02em;text-transform:none"> — comisiones, IVA, ajustes y neto esperado</span>
+        </summary>
+        <div class="form-row" id="r-com-usd-wrap" style="display:none">
+          <div class="fg"><label class="fl">Comisión Booking USD</label><input type="number" class="fi" id="r-com-usd" placeholder="0.00" step="0.01" min="0" oninput="onComUsdChange()"></div>
+          <div class="fg"><div style="font-size:.53rem;color:var(--muted);line-height:1.4;margin-top:1.1rem">Ingresa aquí la comisión real que informa Booking. Este valor manda sobre el porcentaje.</div></div>
+        </div>
+        <div class="form-row">
+          <div class="fg"><label class="fl" id="r-com-pct-lbl">Comisión plataforma %</label><input type="number" class="fi" id="r-com-pct" value="0" min="0" max="100" step="0.1" oninput="onComPctChange()"></div>
+          <div class="fg"><label class="fl">Comisión real CLP</label><input type="text" class="fi" id="r-com-clp" placeholder="Monto real según liquidación" oninput="this.dataset.manual='1';recalcFinanzas()" onblur="fmtClpOnBlur(this)"></div>
+        </div>
+        <div id="r-com-pct-hint" style="display:none;font-size:.53rem;color:var(--muted);margin:-.3rem 0 .55rem;line-height:1.4">Solo se usa si Comisi&#x00f3;n Booking USD est&#x00e1; en 0.</div>
+        <div class="form-row">
+          <div class="fg"><label class="fl">Impuesto s/comisión %</label><input type="number" class="fi" id="r-com-tax-pct" value="0" min="0" step="0.1" oninput="onComTaxPctChange()"></div>
+          <div class="fg"><label class="fl">Impuesto real CLP</label><input type="text" class="fi" id="r-com-tax-clp" placeholder="Monto real según liquidación" oninput="recalcFinanzas()" onblur="fmtClpOnBlur(this)"></div>
+        </div>
+        <div class="form-row">
+          <div class="fg"><label class="fl">Ajuste Airbnb CLP</label><input type="text" class="fi" id="r-airbnb-adj-clp" placeholder="$0" oninput="recalcFinanzas()" onblur="fmtClpOnBlur(this)"></div>
+          <div class="fg"><div style="font-size:.53rem;color:var(--muted);line-height:1.4;margin-top:1.1rem">Descuento Airbnb sobre el neto (ej: retenci&#x00f3;n de servicio). Valor positivo = se descuenta.</div></div>
+        </div>
+        <div class="form-row">
+          <div class="fg"><label class="fl">Otros cargos plataforma CLP</label><input type="text" class="fi" id="r-plat-extra-clp" placeholder="$0" oninput="recalcFinanzas()" onblur="fmtClpOnBlur(this)"></div>
+          <div class="fg"><label class="fl">Costo total plataforma CLP</label><input class="fi" id="r-plat-total-clp" readonly style="background:rgba(0,0,0,.025);color:var(--muted);cursor:default" tabindex="-1" placeholder="—"></div>
+        </div>
+        <div style="font-size:.56rem;color:var(--muted);margin:-.28rem 0 .6rem;line-height:1.45">Los porcentajes son referenciales. Registra el monto real según liquidación de la plataforma.</div>
+      </details>
 
       <!-- ═══ C · CAJA Y SALDO ═══ -->
       <div style="font-size:.43rem;letter-spacing:.28em;text-transform:uppercase;color:var(--gold);font-weight:600;padding:.5rem 0 .22rem;border-bottom:1px solid rgba(201,168,76,.18);margin-bottom:.5rem">Caja y saldo</div>
@@ -4901,6 +4905,7 @@ function openEditReserva(id){
   // Comisión Booking USD: cargar valor guardado y mostrar campo si aplica
   {const _comUsdEl=document.getElementById('r-com-usd');if(_comUsdEl)_comUsdEl.value=r.platform_commission_usd||'';}
   updateComUsdVisibility();
+  {const _platSec=document.getElementById('r-plat-section');if(_platSec)_platSec.open=(r.platform==='Booking');}
   // Freeze commission for paid Booking reservations.
   // If already paid: lock manual flag so recalcFinanzas() never overwrites the stored CLP value,
   // even if the admin changes the TC field while editing the reservation later.
@@ -5187,6 +5192,11 @@ function onPlatformChange(){
   onComPctChange(); // propaga sugerencia a r-com-clp y recalcula
   const _bkAlert=document.getElementById('r-booking-pay-alert');
   if(_bkAlert)_bkAlert.style.display=plat==='Booking'?'block':'none';
+  const _platSec=document.getElementById('r-plat-section');
+  if(_platSec){
+    if(plat==='Booking')_platSec.open=true;
+    else if(['Uso propietario','Mantenci\xf3n','Bloqueo administrativo'].includes(plat))_platSec.open=false;
+  }
 }
 
 // Ajusta estados no comerciales
