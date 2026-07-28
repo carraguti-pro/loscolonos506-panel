@@ -4625,7 +4625,7 @@ async function verDet(id){
       <div id="det-pagos-summary"></div>
       <div id="det-pagos-list"><div style="color:var(--muted);font-size:.75rem;padding:.5rem 0">Cargando pagos…</div></div>
       <button type="button" class="btn-reg-pago" onclick="showDetPagoForm('${r.id}',${totalCLP})">+ Registrar pago</button>
-      ${r.platform==='Booking'?`<button type="button" class="btn-reg-pago" style="border-color:rgba(0,53,128,.35);color:#003580;background:rgba(0,53,128,.04);margin-top:.28rem" onclick="copyBkPayMsg('${r.id}')">📋 Copiar mensaje de pago Booking</button>`:''}
+      ${['Booking','Directo','Web Directa','WhatsApp','Teléfono'].includes(r.platform)?`<button type="button" class="btn-reg-pago" style="border-color:rgba(0,53,128,.35);color:#003580;background:rgba(0,53,128,.04);margin-top:.28rem" onclick="copyBkPayMsg('${r.id}')">📋 Copiar mensaje de pago</button>`:''}
       <div id="det-pago-form" style="display:none;margin-top:.5rem"></div>
     </div>`;
   document.getElementById('det-ft').innerHTML=`
@@ -4706,14 +4706,16 @@ async function loadPagosDetalle(resId,totalCLP,res){
 }
 function copyBkPayMsg(id){
   const r=RES.find(x=>x.id===id);if(!r)return;
-  const tc=parseFloat(r.exchange_rate_used||0);
   const usd=parseFloat(r.total_usd||0);
-  const clp=parseFloat(r.total_clp||0);
-  if(!tc||!usd||!clp){toast('No se puede generar el mensaje: faltan valores guardados de la reserva.','err');return;}
+  if(!usd){toast('No se puede generar el mensaje: falta el total USD de la reserva.','err');return;}
+  if(USD_CLP_SOURCE!=='dolar_observado_api'||!(USD_CLP>0)){toast('Tipo de cambio vigente no disponible. Recargue el panel e intente nuevamente.','err');return;}
+  const tc=USD_CLP;
+  const clp=Math.round(usd*tc);
+  const tcDate=USD_CLP_DATE?new Date(USD_CLP_DATE+'T12:00:00').toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'2-digit'}):'fecha no disponible';
   const nights=r.nights||calcN(r.check_in,r.check_out);
   const totalUSD=usd.toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2});
   const tcFmt='$'+tc.toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const msg='Hola '+(r.guest_name||'[nombre]')+', muy buenas tardes.\n\nJunto con saludarte, confirmamos el detalle de tu reserva en Oasis Los Colonos, Puerto Varas:\n\nEstadía: desde el '+fmtD(r.check_in)+' al '+fmtD(r.check_out)+'.\nNoches: '+nights+'.\nValor total informado para la reserva: US$'+totalUSD+'.\nEquivalente referencial en pesos chilenos: '+fmtCLP(clp)+' CLP, considerando tipo de cambio '+tcFmt+'.\n\nTe agradeceremos confirmar que recibiste y estás de acuerdo con el detalle y valor indicado.\n\nEl pago se coordina directamente con administración y puede realizarse mediante una de estas opciones:\n\n1. Link de pago Mercado Pago.\n2. Transferencia bancaria.\n\nPor favor indícanos cuál alternativa prefieres y, una vez confirmado, te enviaremos el link de pago o los datos bancarios correspondientes.\n\nQuedamos atentos para ayudarte con cualquier duda y coordinar tu llegada.\n\nSaludos cordiales,\nReservas Ferran Propiedades';
+  const msg='Hola '+(r.guest_name||'[nombre]')+', muy buenas tardes.\n\nJunto con saludarte, confirmamos el detalle de tu reserva en Oasis Los Colonos, Puerto Varas:\n\nEstadía: desde el '+fmtD(r.check_in)+' al '+fmtD(r.check_out)+'.\nNoches: '+nights+'.\nValor total informado para la reserva: US$'+totalUSD+'.\nEquivalente estimado en pesos chilenos: '+fmtCLP(clp)+' CLP, según dólar observado informado al '+tcDate+': '+tcFmt+'.\nEste monto es referencial; el cobro final en CLP se coordina al tipo de cambio vigente al momento del pago.\n\nTe agradeceremos confirmar que recibiste y estás de acuerdo con el detalle y valor indicado.\n\nEl pago se coordina directamente con administración y puede realizarse mediante una de estas opciones:\n\n1. Link de pago Mercado Pago.\n2. Transferencia bancaria.\n\nPor favor indícanos cuál alternativa prefieres y, una vez confirmado, te enviaremos el link de pago o los datos bancarios correspondientes.\n\nQuedamos atentos para ayudarte con cualquier duda y coordinar tu llegada.\n\nSaludos cordiales,\nReservas Ferran Propiedades';
   if(navigator.clipboard&&navigator.clipboard.writeText){
     navigator.clipboard.writeText(msg).then(()=>toast('📋 Mensaje copiado al portapapeles','ok')).catch(()=>_bkMsgFallback(msg));
   }else{_bkMsgFallback(msg);}
