@@ -3907,6 +3907,7 @@ async function enviarEmailComprobanteStaffSolicitud(rowId){
 
 // ══ TARIFAS · OASIS 506-A ══════════════════════════════════
 async function loadPricingConfig(){
+  if(!requireRole(['admin']))return;
   const status=document.getElementById('cfg-pricing-status');
   const ts=document.getElementById('cfg-pricing-ts');
   if(status)status.textContent='Cargando…';
@@ -4765,6 +4766,7 @@ async function sendGuestLifecycleEmail(r,status){
   }catch(e){console.warn('[Panel] EmailJS lifecycle error:',e);toast('⚠ No se pudo enviar email al huésped','err');}
 }
 async function chgSt(id,status){
+  if(!requireRole(['admin']))return;
   const b={status,updated_at:new Date().toISOString()};
   // Definir blocks_calendar y hold_expires_at según el estado
   if(status==='pre_reserva_48h'){
@@ -4789,6 +4791,7 @@ async function chgSt(id,status){
   loadReservas();loadDashboard();
 }
 async function verDet(id){
+  if(!requireRole(['admin']))return;
   const r=RES.find(x=>x.id===id);if(!r)return;
   const com=COM_REALES[r.check_in]||0;
   const totalCLP=r.total_clp||Math.round(parseFloat(r.total_usd||0)*USD_CLP);
