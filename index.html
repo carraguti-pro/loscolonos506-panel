@@ -4678,7 +4678,11 @@ async function loadPagosDetalle(resId,totalCLP,res){
       </div>${esDifPos?`<div class="det-warn-bar">⚠ Caja recibida corresponde a neto abonado por plataforma. Revisar comisión, TC o ajuste Airbnb.</div>`:''}`;
     }
   }
-  if(p.length===0){listEl.innerHTML='<div class="det-pagos-empty">Sin pagos registrados</div>';return;}
+  if(p.length===0){
+    const _bkWarn=(res.platform==='Booking')&&(res.status==='confirmada');
+    listEl.innerHTML=`${_bkWarn?'<div style="background:#fef2f2;border-left:3px solid #dc2626;padding:.5rem .65rem;border-radius:.3rem;font-size:.7rem;line-height:1.5;color:#991b1b;margin-bottom:.5rem">⚠ <strong>Reserva Booking confirmada sin pagos registrados.</strong> Coordinar cobro con el huésped antes del ingreso.</div>':''}<div class="det-pagos-empty">Sin pagos registrados</div>`;
+    return;
+  }
   const ST={recibido:'✅ Recibido',programado:'📅 Programado',pendiente:'⏳ Pendiente',retenido_por_plataforma:'🔒 Retenido',anulado:'❌ Anulado',reembolsado:'↩ Reembolsado'};
   listEl.innerHTML=p.map(x=>`<div class="det-pago-card">
     <div class="det-pago-top">
