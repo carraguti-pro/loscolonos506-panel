@@ -4830,8 +4830,8 @@ async function verDet(id){
       <div class="det-section-lbl">Pagos / Abonos</div>
       <div id="det-pagos-summary"></div>
       <div id="det-pagos-list"><div style="color:var(--muted);font-size:.75rem;padding:.5rem 0">Cargando pagos…</div></div>
-      <button type="button" class="btn-reg-pago" onclick="showDetPagoForm('${r.id}',${totalCLP})">+ Registrar pago</button>
-      ${['Booking','Directo','Web Directa','WhatsApp','Teléfono'].includes(r.platform)?`<button type="button" class="btn-reg-pago" style="border-color:rgba(0,53,128,.35);color:#003580;background:rgba(0,53,128,.04);margin-top:.28rem" onclick="copyBkPayMsg('${r.id}')">📋 Copiar mensaje de pago</button><button type="button" class="btn-reg-pago" style="border-color:rgba(0,158,65,.35);color:#007a30;background:rgba(0,158,65,.04);margin-top:.28rem" onclick="copyMpPayMsg('${r.id}')">📋 Copiar mensaje Mercado Pago</button>`:''}
+      ${CU?.role==='admin'?`<button type="button" class="btn-reg-pago" onclick="showDetPagoForm('${r.id}',${totalCLP})">+ Registrar pago</button>
+      ${['Booking','Directo','Web Directa','WhatsApp','Teléfono'].includes(r.platform)?`<button type="button" class="btn-reg-pago" style="border-color:rgba(0,53,128,.35);color:#003580;background:rgba(0,53,128,.04);margin-top:.28rem" onclick="copyBkPayMsg('${r.id}')">📋 Copiar mensaje de pago</button><button type="button" class="btn-reg-pago" style="border-color:rgba(0,158,65,.35);color:#007a30;background:rgba(0,158,65,.04);margin-top:.28rem" onclick="copyMpPayMsg('${r.id}')">📋 Copiar mensaje Mercado Pago</button><button type="button" class="btn-reg-pago" style="border-color:rgba(0,100,80,.35);color:#005540;background:rgba(0,100,80,.04);margin-top:.28rem" onclick="copyTransferMsg('${r.id}')">📋 Copiar datos transferencia</button>`:''}`:``}
       <div id="det-pago-form" style="display:none;margin-top:.5rem"></div>
     </div>`;
   document.getElementById('det-ft').innerHTML=`
@@ -4914,6 +4914,7 @@ async function loadPagosDetalle(resId,totalCLP,res){
   </div>`).join('');
 }
 function copyBkPayMsg(id){
+  if(!requireRole(['admin']))return;
   const r=RES.find(x=>x.id===id);if(!r)return;
   const usd=parseFloat(r.total_usd||0);
   if(!usd){toast('No se puede generar el mensaje: falta el total USD de la reserva.','err');return;}
@@ -4930,6 +4931,7 @@ function copyBkPayMsg(id){
   }else{_bkMsgFallback(msg);}
 }
 function copyMpPayMsg(id){
+  if(!requireRole(['admin']))return;
   const r=RES.find(x=>x.id===id);if(!r)return;
   const usd=parseFloat(r.total_usd||0);
   if(!usd){toast('No se puede generar el mensaje: falta el total USD de la reserva.','err');return;}
@@ -4955,7 +4957,41 @@ function _bkMsgFallback(msg){
   catch(e){prompt('Copiar manualmente (Ctrl+C / Cmd+C):',msg);}
   document.body.removeChild(ta);
 }
+async function copyTransferMsg(id){
+  if(!requireRole(['admin']))return;
+  const r=RES.find(x=>x.id===id);if(!r)return;
+  const usd=parseFloat(r.total_usd||0);
+  if(!usd){toast('No se puede generar el mensaje: falta el total USD.','err');return;}
+  if(USD_CLP_SOURCE!=='dolar_observado_api'||!(USD_CLP>0)){toast('Tipo de cambio vigente no disponible. Recargue el panel.','err');return;}
+  if(!PAYMENT_SETTINGS_LOADED){await loadPaymentSettings();}
+  if(!PAYMENT_SETTINGS_LOADED){toast('Datos de transferencia aún cargando. Intente nuevamente.','err');return;}
+  if(!PAYMENT_SETTINGS){toast('Configuración de transferencia no encontrada.','err');return;}
+  if(PAYMENT_SETTINGS.active!==true){toast('La transferencia bancaria está desactivada en la configuración.','err');return;}
+  const s=PAYMENT_SETTINGS;
+  const reqFields=['bank_holder','bank_rut','bank_name','bank_account_type','bank_account_number','bank_email'];
+  if(reqFields.some(k=>!s[k])){toast('Faltan datos bancarios en configuración. Revise la tarjeta Datos de transferencia bancaria.','err');return;}
+  const tc=USD_CLP;
+  const clp=Math.round(usd*tc);
+  const tcDate=USD_CLP_DATE?new Date(USD_CLP_DATE+'T12:00:00').toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'2-digit'}):'fecha no disponible';
+  const nights=r.nights||calcN(r.check_in,r.check_out);
+  const totalUSD=usd.toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const tcFmt='$'+tc.toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const glosa=(s.transfer_subject_prefix||'Reserva Oasis')+' - '+(r.guest_name||'[nombre]');
+  const msg='Hola '+(r.guest_name||'[nombre]')+', muy buenas tardes.\n\nTe enviamos los datos de transferencia bancaria para completar tu reserva en Oasis Los Colonos, Puerto Varas.\n\nEstadía: desde el '+fmtD(r.check_in)+' al '+fmtD(r.check_out)+'.\nNoches: '+nights+'.\nValor total: US$'+totalUSD+'.\nEquivalente estimado en pesos chilenos: '+fmtCLP(clp)+' CLP, según dólar observado informado al '+tcDate+': '+tcFmt+'.\nEste monto es referencial; el cobro final en CLP se coordina al tipo de cambio vigente al momento del pago.\n\nDatos de transferencia bancaria:\nTitular: '+s.bank_holder+'\nRUT: '+s.bank_rut+'\nBanco: '+s.bank_name+'\nTipo de cuenta: '+s.bank_account_type+'\nN° de cuenta: '+s.bank_account_number+'\nCorreo para comprobante: '+s.bank_email+'\nGlosa: '+glosa+'\n\nUna vez realizada la transferencia, te agradeceremos enviarnos el comprobante a '+s.bank_email+' o por este mismo medio, para registrar la recepción y continuar con la coordinación de tu llegada.\n\nSaludos cordiales,\nReservas Ferran Propiedades';
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(msg).then(()=>toast('📋 Datos de transferencia copiados al portapapeles','ok')).catch(()=>_transferFallback(msg));
+  }else{_transferFallback(msg);}
+}
+function _transferFallback(msg){
+  const ta=document.createElement('textarea');
+  ta.value=msg;ta.style.cssText='position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+  document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');toast('📋 Datos de transferencia copiados','ok');}
+  catch(e){toast('No fue posible copiar automáticamente. Use Ctrl+C / Cmd+C.','err');}
+  document.body.removeChild(ta);
+}
 function showDetPagoForm(resId,totalCLP){
+  if(!requireRole(['admin']))return;
   const form=document.getElementById('det-pago-form');if(!form)return;
   if(form.style.display!=='none'){form.style.display='none';return;}
   const srcOpts=PAGO_SOURCES.map(s=>`<option value="${s}">${s}</option>`).join('');
@@ -4985,6 +5021,7 @@ function showDetPagoForm(resId,totalCLP){
 </div>`;
 }
 async function guardarPagoDetalle(resId,totalCLP){
+  if(!requireRole(['admin']))return;
   const clp=parseFloat(document.getElementById('np-clp')?.value)||null;
   const usd=parseFloat(document.getElementById('np-usd')?.value)||null;
   if(!clp&&!usd){toast('Ingrese un monto','err');return;}
