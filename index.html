@@ -2180,6 +2180,7 @@ Las instrucciones activas aparecen sobre la tabla de reservas.
         <div class="fg"><label class="fl">Plataforma</label><select class="fs" id="r-plat" onchange="onPlatformChange()"><option value="Directo">Directo</option><option value="Web Directa">Web Directa</option><option value="WhatsApp">WhatsApp</option><option value="Teléfono">Teléfono</option><option value="Airbnb">Airbnb</option><option value="Booking">Booking</option><option value="Vrbo">Vrbo</option><option value="Uso propietario">Uso propietario</option><option value="Mantención">Mantención</option><option value="Bloqueo administrativo">Bloqueo administrativo</option><option value="Otro">Otro</option></select></div>
         <div class="fg"><label class="fl">Estado</label><select class="fs" id="r-status" onchange="onResStatusChange()"><option value="solicitud_recibida">Solicitud Recibida</option><option value="confirmada">Confirmada</option><option value="pre_reserva_48h">Pre-Reserva 48h</option><option value="bloqueada_admin">Bloqueada Admin</option><option value="mantencion">Mantención</option><option value="cancelada">Cancelada</option></select></div>
       </div>
+      <div id="r-booking-pay-alert" style="display:none;background:#fff7ed;border-left:3px solid #f97316;padding:.45rem .65rem;border-radius:.3rem;font-size:.68rem;line-height:1.5;color:#92400e;margin:.2rem 0 .35rem">⚠ <strong>Booking:</strong> el pago NO se recibe automáticamente. El cobro debe coordinarse con el huésped y registrarse manualmente en pagos.</div>
       <!-- ═══ A · HUÉSPED PAGA ═══ -->
       <div style="font-size:.43rem;letter-spacing:.28em;text-transform:uppercase;color:var(--gold);font-weight:600;padding:.5rem 0 .22rem;margin-top:.55rem;border-bottom:1px solid rgba(201,168,76,.18);margin-bottom:.5rem">Huésped paga</div>
       <div class="form-row" style="margin-bottom:.45rem">
@@ -4624,7 +4625,7 @@ async function verDet(id){
     </div>`;
   document.getElementById('det-ft').innerHTML=`
     ${isSolicitud(r)?`<button class="btn btn-success" onclick="chgSt('${r.id}','pre_reserva_48h');closeModal('m-detalle')">⏳ Pre-Reservar 48h</button>`:''}
-    ${r.status==='pre_reserva_48h'?`<button class="btn btn-gold" onclick="chgSt('${r.id}','confirmada');closeModal('m-detalle')">✅ Confirmar Pago</button>`:''}
+    ${r.status==='pre_reserva_48h'?`<button class="btn btn-gold" onclick="chgSt('${r.id}','confirmada');closeModal('m-detalle')">✅ Confirmar Reserva</button>`:''}
     ${r.phone?`<button class="btn btn-outline" onclick="window.open('https://wa.me/${(r.phone||'').replace(/\D/g,'')}')">WhatsApp</button>`:''}
     ${!isCancelada(r)?`<button class="btn btn-danger" onclick="chgSt('${r.id}','cancelada');closeModal('m-detalle')">Cancelar</button>`:''}
     <button class="btn btn-ghost" onclick="closeModal('m-detalle')">Cerrar</button>`;
@@ -4935,6 +4936,7 @@ function openEditReserva(id){
   recalcFinanzas();
   updateLongStayBadge();
   updateLongStayRateHint();
+  {const _bkA=document.getElementById('r-booking-pay-alert');if(_bkA)_bkA.style.display=(r.platform==='Booking'?'block':'none');}
   openModal('m-reserva');
 }
 
@@ -5179,6 +5181,8 @@ function onPlatformChange(){
     const _tbEl=document.getElementById('r-tax-base');if(_tbEl)_tbEl.value='subtotal_only';
   }
   onComPctChange(); // propaga sugerencia a r-com-clp y recalcula
+  const _bkAlert=document.getElementById('r-booking-pay-alert');
+  if(_bkAlert)_bkAlert.style.display=plat==='Booking'?'block':'none';
 }
 
 // Ajusta estados no comerciales
