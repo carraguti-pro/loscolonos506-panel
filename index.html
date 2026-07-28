@@ -2262,6 +2262,10 @@ Las instrucciones activas aparecen sobre la tabla de reservas.
         <div class="fg"><label class="fl">Neto esperado CLP</label><input class="fi" id="r-net-clp" readonly style="background:rgba(42,122,82,.06);color:var(--success);cursor:default;font-weight:600" tabindex="-1" placeholder="—"></div>
         <div class="fg"><label class="fl">Modalidad pago</label><select class="fs" id="r-pay-mode" onchange="recalcFinanzas()"><option value="pago_total">Pago total</option><option value="pago_parcial">Pago parcial</option><option value="retenido_por_plataforma">Retenido por plataforma</option><option value="pago_en_cuotas">Pago en cuotas</option><option value="pendiente_en_espera">Pendiente / en espera de pago</option><option value="no_aplica">No aplica</option></select></div>
       </div>
+      <div class="form-row">
+        <div class="fg"><label class="fl">Estado pago</label><select class="fs" id="r-pago"><option value="pendiente">Pendiente</option><option value="parcial">Parcial</option><option value="retenido_por_plataforma">Retenido por plataforma</option><option value="pagado_total">Pagado total</option><option value="reembolsado">Reembolsado</option><option value="no_aplica">No aplica</option></select></div>
+        <div class="fg"><label class="fl">Método pago</label><select class="fs" id="r-metodo"><option value="Pendiente de definir">Pendiente de definir</option><option value="Mercado Pago">Mercado Pago</option><option value="Transferencia bancaria">Transferencia bancaria</option><option value="PayPal">PayPal</option><option value="Efectivo">Efectivo</option><option value="Booking">Booking</option><option value="Airbnb">Airbnb</option><option value="Vrbo">Vrbo</option><option value="Otro">Otro</option></select></div>
+      </div>
       <!-- ─── Pagos y abonos ─── -->
       <div style="font-size:.43rem;letter-spacing:.2em;text-transform:uppercase;color:var(--ink);font-weight:600;padding:.4rem 0 .25rem;margin-top:.2rem;border-bottom:1px solid rgba(0,0,0,.08);margin-bottom:.45rem">Pagos y abonos</div>
       <div id="pagos-list" style="margin-bottom:.35rem"></div>
@@ -2277,10 +2281,6 @@ Las instrucciones activas aparecen sobre la tabla de reservas.
       <div class="form-row">
         <div class="fg"><label class="fl">Fecha abono real</label><input type="date" class="fi" id="r-deposit-date"></div>
         <div class="fg"><label class="fl">Fecha estimada liberación</label><input type="date" class="fi" id="r-release-date"></div>
-      </div>
-      <div class="form-row">
-        <div class="fg"><label class="fl">Estado pago</label><select class="fs" id="r-pago"><option value="pendiente">Pendiente</option><option value="parcial">Parcial</option><option value="retenido_por_plataforma">Retenido por plataforma</option><option value="pagado_total">Pagado total</option><option value="reembolsado">Reembolsado</option><option value="no_aplica">No aplica</option></select></div>
-        <div class="fg"><label class="fl">Método pago</label><select class="fs" id="r-metodo"><option value="Pendiente de definir">Pendiente de definir</option><option value="Mercado Pago">Mercado Pago</option><option value="Transferencia bancaria">Transferencia bancaria</option><option value="PayPal">PayPal</option><option value="Efectivo">Efectivo</option><option value="Booking">Booking</option><option value="Airbnb">Airbnb</option><option value="Vrbo">Vrbo</option><option value="Otro">Otro</option></select></div>
       </div>
       <div class="fg"><label class="fl">Observación plataforma</label><textarea class="ft" id="r-plat-notes" placeholder="Ej: Airbnb retiene 50% hasta 24h después del check-in" style="min-height:50px"></textarea></div>
       <div class="fg"><label class="fl">Notas internas</label><textarea class="ft" id="r-notes" placeholder="Observaciones internas…"></textarea></div>
