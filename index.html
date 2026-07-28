@@ -2280,7 +2280,7 @@ Las instrucciones activas aparecen sobre la tabla de reservas.
       </div>
       <div class="form-row">
         <div class="fg"><label class="fl">Estado pago</label><select class="fs" id="r-pago"><option value="pendiente">Pendiente</option><option value="parcial">Parcial</option><option value="retenido_por_plataforma">Retenido por plataforma</option><option value="pagado_total">Pagado total</option><option value="reembolsado">Reembolsado</option><option value="no_aplica">No aplica</option></select></div>
-        <div class="fg"><label class="fl">Método pago</label><input class="fi" id="r-metodo" placeholder="Transferencia, efectivo…"></div>
+        <div class="fg"><label class="fl">Método pago</label><select class="fs" id="r-metodo"><option value="Pendiente de definir">Pendiente de definir</option><option value="Mercado Pago">Mercado Pago</option><option value="Transferencia bancaria">Transferencia bancaria</option><option value="PayPal">PayPal</option><option value="Efectivo">Efectivo</option><option value="Booking">Booking</option><option value="Airbnb">Airbnb</option><option value="Vrbo">Vrbo</option><option value="Otro">Otro</option></select></div>
       </div>
       <div class="fg"><label class="fl">Observación plataforma</label><textarea class="ft" id="r-plat-notes" placeholder="Ej: Airbnb retiene 50% hasta 24h después del check-in" style="min-height:50px"></textarea></div>
       <div class="fg"><label class="fl">Notas internas</label><textarea class="ft" id="r-notes" placeholder="Observaciones internas…"></textarea></div>
@@ -4815,9 +4815,10 @@ function openNuevaReserva(){
   EDIT_RES_ID=null;
   document.getElementById('m-reserva-title').textContent='Nueva Reserva';
   document.getElementById('m-reserva-save-btn').textContent='Guardar Reserva';
-  ['r-nombre','r-email','r-tel','r-guest-country','r-guest-language','r-guest-phone','r-ci','r-co','r-notes','r-metodo','r-plat-notes','r-deposit-date','r-release-date'].forEach(id=>{
+  ['r-nombre','r-email','r-tel','r-guest-country','r-guest-language','r-guest-phone','r-ci','r-co','r-notes','r-plat-notes','r-deposit-date','r-release-date'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
+  {const _el=document.getElementById('r-metodo');_el.querySelectorAll('[data-temp-payment-method]').forEach(o=>o.remove());_el.value='Pendiente de definir';}
   document.getElementById('r-hue').value='2';
   document.getElementById('r-plat').value='Directo';
   document.getElementById('r-status').value='solicitud_recibida';
@@ -4951,7 +4952,7 @@ function openEditReserva(id){
   // Pago
   document.getElementById('r-pay-mode').value=r.platform_payment_mode||'pendiente_en_espera';
   document.getElementById('r-pago').value=r.payment_status||'pendiente';
-  document.getElementById('r-metodo').value=r.payment_method||'';
+  {const _el=document.getElementById('r-metodo');_el.querySelectorAll('[data-temp-payment-method]').forEach(o=>o.remove());const _pm=r.payment_method||'Pendiente de definir';_el.value=_pm;if(_el.value!==_pm){const _opt=document.createElement('option');_opt.value=_pm;_opt.textContent='Otro: '+_pm;_opt.dataset.tempPaymentMethod='true';_el.insertBefore(_opt,_el.firstChild);_el.value=_pm;}}
   document.getElementById('r-deposit-date').value=r.actual_deposit_date||'';
   document.getElementById('r-release-date').value=r.expected_release_date||'';
   document.getElementById('r-plat-notes').value=r.platform_payment_notes||'';
