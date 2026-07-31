@@ -777,6 +777,8 @@ tr.historico-row:hover td{opacity:.82}
 .det-date-val{font-family:var(--font-num);font-size:.88rem;font-weight:600;color:var(--ink)}
 .det-date-arrow{color:rgba(0,0,0,.2);font-size:1rem;flex-shrink:0}
 .det-nights-pill{margin-left:auto;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.22);border-radius:20px;padding:.17rem .6rem;font-size:.52rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#7A5F10;white-space:nowrap}
+.det-hero-cod{font-size:.6rem;color:var(--muted);letter-spacing:.04em;margin-bottom:.38rem;font-family:var(--font-num)}
+.det-guests-pill{background:rgba(0,0,0,.05);border:1px solid rgba(0,0,0,.09);border-radius:20px;padding:.17rem .6rem;font-size:.52rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
 /* Section blocks */
 .det-section{margin-bottom:.85rem}
 .det-section-lbl{font-size:.44rem;letter-spacing:.24em;text-transform:uppercase;color:var(--gold);font-weight:700;padding:.35rem 0 .28rem;border-bottom:1px solid rgba(201,168,76,.16);margin-bottom:.52rem}
@@ -4799,19 +4801,19 @@ async function verDet(id){
   document.getElementById('det-body').innerHTML=`
     <div class="det-hero">
       <div class="det-hero-guest">${r.guest_name||'—'}</div>
+      ${r.booking_code?`<div class="det-hero-cod">Cód. ${r.booking_code}</div>`:''}
       <div class="det-hero-badges">${platBadge(r.platform)} ${stBadge(r.status)}${(r.nights||calcN(r.check_in,r.check_out))>=7&&!['mantencion','bloqueada_admin'].includes(r.status)?` <span class="longestay-badge">Tarifa preferente 7+ noches · revisar manualmente</span>`:''}</div>
       <div class="det-hero-dates">
         <span class="det-date-block"><span class="det-date-lbl">Check-In</span><span class="det-date-val">${fmtD(r.check_in)}</span></span>
         <span class="det-date-arrow">→</span>
         <span class="det-date-block"><span class="det-date-lbl">Check-Out</span><span class="det-date-val">${fmtD(r.check_out)}</span></span>
         <span class="det-nights-pill">${r.nights||calcN(r.check_in,r.check_out)} noches</span>
+        ${r.guests?`<span class="det-guests-pill">${r.guests} huésped${parseFloat(r.guests)!==1?'es':''}</span>`:''}
       </div>
     </div>
     <div class="det-section">
       <div class="det-section-lbl">Estadía</div>
       <div class="det-fields">
-        <div class="det-field"><span class="det-lbl">Huéspedes</span><span class="det-val">${r.guests||'—'}</span></div>
-        <div class="det-field"><span class="det-lbl">Plataforma</span><span class="det-val">${r.platform||'—'}</span></div>
         <div class="det-field"><span class="det-lbl">Email</span><span class="det-val">${r.email||'—'}</span></div>
         <div class="det-field"><span class="det-lbl">Teléfono</span><span class="det-val">${r.phone||'—'}</span></div>
         <div class="det-field"><span class="det-lbl">Método de pago</span><span class="det-val">${r.payment_method||'—'}</span></div>
@@ -4825,7 +4827,7 @@ async function verDet(id){
         <div class="det-fin-cell"><span class="det-fin-lbl">Limpieza USD</span><span class="det-fin-val">$${parseFloat(r.cleaning_fee_usd||0).toFixed(2)}</span></div>
         <div class="det-fin-cell"><span class="det-fin-lbl">Total USD</span><span class="det-fin-val det-fin-highlight">$${parseFloat(r.total_usd||0).toFixed(2)}</span></div>
         <div class="det-fin-cell"><span class="det-fin-lbl">Total CLP</span><span class="det-fin-val det-fin-highlight">${fmtCLP(totalCLP)}</span></div>
-        <div class="det-fin-cell"><span class="det-fin-lbl">Comisión</span><span class="det-fin-val" style="color:var(--danger)">-${fmtCLP(com)}</span></div>
+        ${r.platform!=='Booking'?`<div class="det-fin-cell"><span class="det-fin-lbl">Comisión</span><span class="det-fin-val" style="color:var(--danger)">-${fmtCLP(com)}</span></div>`:''}
       </div>
     </div>
     ${(()=>{const _n=r.nights||calcN(r.check_in,r.check_out);if(_n<7||['mantencion','bloqueada_admin'].includes(r.status))return'';const _rate=getLongStayRate(_n);if(!_rate)return'';if(_rate.pct===null)return'<div style="margin:.45rem 0 .65rem;padding:.42rem .75rem;background:rgba(201,168,76,.07);border-left:3px solid rgba(201,168,76,.4);border-radius:6px"><span class="longestay-badge" style="font-size:.54rem">🔔 Tarifa preferente 28+ noches · Revisión manual especial</span></div>';const _cur=r.reservation_currency||'USD';let _amtTxt='';if(_cur==='CLP'){const _s=r.subtotal_clp||0;if(_s>0){const _d=Math.round(_s*(1-_rate.pct/100));_amtTxt=formatCLP(_d);}}else{const _s=parseFloat(r.subtotal_usd||0);if(_s>0){const _d=_s*(1-_rate.pct/100);_amtTxt='USD '+_d.toFixed(2);}}if(!_amtTxt)return'';return`<div style="margin:.45rem 0 .65rem;padding:.42rem .75rem;background:rgba(201,168,76,.07);border-left:3px solid rgba(201,168,76,.4);border-radius:6px"><span class="longestay-badge" style="font-size:.54rem">💡 Sugerencia tarifa preferente: ${_rate.label} · Alojamiento sugerido: <strong>${_amtTxt}</strong> · Limpieza sin descuento</span></div>`;})()}
@@ -4871,18 +4873,16 @@ async function loadPagosDetalle(resId,totalCLP,res){
   const _cobranzaPill=_cobranzaLbl?`<div style="font-size:.6rem;color:var(--muted);padding:.28rem 0 .3rem;margin-bottom:.22rem;line-height:1.4">Según pagos registrados · ${_cobranzaLbl}</div>`:'';
   if(sumEl){
     if(esBooking&&comProv>0){
-      // 6 celdas (3 filas × 2 col): bruto | provisión / neto post-com | caja / por percibir | saldo vs neto
-      const saldoNeto=netEsp-caja;
-      const saldoColor=saldoNeto>100?'var(--warning)':saldoNeto<-100?'var(--gold)':'var(--success)';
-      const saldoLbl=saldoNeto<-100?'Recibido sobre el neto':saldoNeto>100?'Pendiente vs neto':'Liquidado';
-      const saldoDisplay=Math.abs(saldoNeto)<100?'—':(saldoNeto<0?'+':'')+fmtCLP(Math.abs(saldoNeto));
-      sumEl.innerHTML=`${_cobranzaPill}<div class="det-sum-grid">
-        <div class="det-sum-cell"><span class="det-sum-lbl">Total bruto CLP</span><span class="det-sum-val">${fmtCLP(totalCLP)}</span></div>
-        <div class="det-sum-cell"><span class="det-sum-lbl">Provisión comisión Booking</span><span class="det-sum-val" style="color:var(--danger)">−${fmtCLP(comProv)}</span></div>
-        <div class="det-sum-cell"><span class="det-sum-lbl">Neto esperado post-comisión</span><span class="det-sum-val" style="color:var(--success)">${fmtCLP(netEsp)}</span></div>
-        <div class="det-sum-cell"><span class="det-sum-lbl">Caja recibida</span><span class="det-sum-val" style="color:var(--success)">${fmtCLP(caja)}</span></div>
-        <div class="det-sum-cell"><span class="det-sum-lbl">Por percibir</span><span class="det-sum-val" style="color:var(--warning)">${fmtCLP(porPercibir)}</span></div>
-        <div class="det-sum-cell"><span class="det-sum-lbl">${saldoLbl}</span><span class="det-sum-val" style="color:${saldoColor}">${saldoDisplay}</span></div>
+      const netoOperacional=caja-comProv;
+      const ajusteCambio=caja-totalCLP;
+      const mostrarAjuste=caja>0&&Math.abs(ajusteCambio)>100;
+      sumEl.innerHTML=`<div class="det-sum-grid">
+        <div class="det-sum-cell"><span class="det-sum-lbl">Valor reserva CLP (ref.)</span><span class="det-sum-val">${fmtCLP(totalCLP)}</span></div>
+        <div class="det-sum-cell"><span class="det-sum-lbl">Caja recibida real</span><span class="det-sum-val" style="color:var(--success)">${fmtCLP(caja)}</span></div>
+        ${mostrarAjuste?`<div class="det-sum-cell"><span class="det-sum-lbl">Diferencia de cambio / ajuste</span><span class="det-sum-val" style="color:${ajusteCambio>0?'var(--info)':'var(--warning)'}">${ajusteCambio>=0?'+':'−'}${fmtCLP(Math.abs(ajusteCambio))}</span></div>`:''}
+        <div class="det-sum-cell"><span class="det-sum-lbl">Comisión Booking descontada</span><span class="det-sum-val" style="color:var(--danger)">−${fmtCLP(comProv)}</span></div>
+        <div class="det-sum-cell"><span class="det-sum-lbl">Neto operacional</span><span class="det-sum-val" style="color:${caja>0?'var(--success)':'var(--muted)'};font-weight:700">${caja>0?fmtCLP(netoOperacional):'Pendiente de pago real'}</span></div>
+        <div class="det-sum-cell"><span class="det-sum-lbl">Por percibir / programado</span><span class="det-sum-val" style="color:var(--warning)">${fmtCLP(porPercibir)}</span></div>
       </div>`;
     }else{
       // 4 celdas — comportamiento original (Airbnb, Vrbo, Directo, etc.)
