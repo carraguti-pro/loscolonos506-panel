@@ -809,11 +809,17 @@ tr.historico-row:hover td{opacity:.82}
 .det-pago-status{font-size:.56rem;font-weight:600;margin-left:auto;white-space:nowrap}
 .det-pago-meta{display:flex;gap:.5rem;flex-wrap:wrap;font-size:.68rem;color:var(--muted)}
 .det-pago-note{margin-top:.2rem;font-size:.68rem;color:#5A5550;font-style:italic}
+.det-pago-foot{margin-top:.32rem;padding-top:.28rem;border-top:1px solid rgba(201,168,76,.12);display:flex;flex-wrap:wrap;gap:.45rem .7rem}
+.det-pago-reg{font-size:.58rem;color:var(--muted)}
+.det-pago-comp{font-size:.58rem;color:var(--muted);opacity:.7}
 /* Empty pagos state */
 .det-pagos-empty{color:var(--muted);font-size:.72rem;text-align:center;padding:.65rem;border:1px dashed rgba(0,0,0,.1);border-radius:4px}
 /* Registrar pago button */
 .btn-reg-pago{display:flex;align-items:center;justify-content:center;gap:.4rem;width:100%;padding:.45rem .85rem;border:1px dashed rgba(201,168,76,.4);border-radius:5px;background:rgba(201,168,76,.04);color:#7A5F10;font-family:'DM Sans',sans-serif;font-size:.54rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:all .18s;margin-top:.28rem}
 .btn-reg-pago:hover{background:rgba(201,168,76,.1);border-color:rgba(201,168,76,.55)}
+.btn-reg-pago-primary{background:rgba(201,168,76,.16);border-style:solid;border-color:rgba(201,168,76,.58)}
+.btn-reg-pago-primary:hover{background:rgba(201,168,76,.3);border-color:rgba(201,168,76,.82)}
+.det-cobro-lbl{font-size:.5rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:.55rem;margin-bottom:.16rem}
 /* Nuevo pago form */
 .det-np-form{border:1px solid rgba(201,168,76,.22);border-radius:6px;padding:.7rem .85rem;background:rgba(201,168,76,.03)}
 .det-np-title{font-size:.46rem;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:.45rem}
@@ -4792,6 +4798,19 @@ async function chgSt(id,status){
   }
   loadReservas();loadDashboard();
 }
+function fmtGuestField(s){
+  if(!s)return'';
+  const L={'FRANCES':'Francés','INGLES':'Inglés','ALEMAN':'Alemán','ITALIANO':'Italiano','PORTUGUES':'Portugués','PORTUGUEZ':'Portugués','CHINO':'Chino','JAPONES':'Japonés','ARABE':'Árabe'};
+  return L[s.toUpperCase()]||(s.charAt(0).toUpperCase()+s.slice(1).toLowerCase());
+}
+function displayMetodoPagoFicha(r){
+  const pl=String(r.platform||'').toLowerCase();
+  if(pl.includes('airbnb'))return'Airbnb';
+  if(pl.includes('booking')||pl.includes('direct')||pl.includes('web')||pl.includes('whatsapp')||pl.includes('tel'))return'Huésped';
+  const raw=String(r.payment_method||'').trim();
+  if(!raw||raw==='-'||raw.toLowerCase().includes('pendiente'))return'Pendiente de definir';
+  return raw;
+}
 async function verDet(id){
   if(!requireRole(['admin']))return;
   const r=RES.find(x=>x.id===id);if(!r)return;
@@ -4816,7 +4835,9 @@ async function verDet(id){
       <div class="det-fields">
         <div class="det-field"><span class="det-lbl">Email</span><span class="det-val">${r.email||'—'}</span></div>
         <div class="det-field"><span class="det-lbl">Teléfono</span><span class="det-val">${r.phone||'—'}</span></div>
-        <div class="det-field"><span class="det-lbl">Método de pago</span><span class="det-val">${r.payment_method||'—'}</span></div>
+        <div class="det-field"><span class="det-lbl">Método de pago</span><span class="det-val">${displayMetodoPagoFicha(r)}</span></div>
+        ${r.guest_country?`<div class="det-field"><span class="det-lbl">País del huésped</span><span class="det-val">${fmtGuestField(r.guest_country)}</span></div>`:''}
+        ${r.guest_language?`<div class="det-field"><span class="det-lbl">Idioma</span><span class="det-val">${fmtGuestField(r.guest_language)}</span></div>`:''}
         ${r.notes?`<div class="det-field det-field-wide"><span class="det-lbl">Notas</span><span class="det-val">${r.notes}</span></div>`:''}
       </div>
     </div>
@@ -4835,8 +4856,8 @@ async function verDet(id){
       <div class="det-section-lbl">Pagos / Abonos</div>
       <div id="det-pagos-summary"></div>
       <div id="det-pagos-list"><div style="color:var(--muted);font-size:.75rem;padding:.5rem 0">Cargando pagos…</div></div>
-      ${CU?.role==='admin'?`<button type="button" class="btn-reg-pago" onclick="showDetPagoForm('${r.id}',${totalCLP})">+ Registrar pago</button>
-      ${['Booking','Directo','Web Directa','WhatsApp','Teléfono'].includes(r.platform)?`<button type="button" class="btn-reg-pago" style="border-color:rgba(0,53,128,.35);color:#003580;background:rgba(0,53,128,.04);margin-top:.28rem" onclick="copyBkPayMsg('${r.id}')">📋 Copiar mensaje de pago</button><button type="button" class="btn-reg-pago" style="border-color:rgba(0,158,65,.35);color:#007a30;background:rgba(0,158,65,.04);margin-top:.28rem" onclick="copyMpPayMsg('${r.id}')">📋 Copiar mensaje Mercado Pago</button><button type="button" class="btn-reg-pago" style="border-color:rgba(0,100,80,.35);color:#005540;background:rgba(0,100,80,.04);margin-top:.28rem" onclick="copyTransferMsg('${r.id}')">📋 Copiar datos transferencia</button>`:''}`:``}
+      ${CU?.role==='admin'?`<button type="button" class="btn-reg-pago btn-reg-pago-primary" onclick="showDetPagoForm('${r.id}',${totalCLP})">+ Registrar pago</button>
+      ${['Booking','Directo','Web Directa','WhatsApp','Teléfono'].includes(r.platform)?`<div class="det-cobro-lbl">Mensajes de cobro</div><button type="button" class="btn-reg-pago" style="border-color:rgba(0,53,128,.35);color:#003580;background:rgba(0,53,128,.04);margin-top:.28rem" onclick="copyBkPayMsg('${r.id}')">📋 Copiar mensaje de pago</button><button type="button" class="btn-reg-pago" style="border-color:rgba(0,158,65,.35);color:#007a30;background:rgba(0,158,65,.04);margin-top:.28rem" onclick="copyMpPayMsg('${r.id}')">📋 Copiar mensaje Mercado Pago</button><button type="button" class="btn-reg-pago" style="border-color:rgba(0,100,80,.35);color:#005540;background:rgba(0,100,80,.04);margin-top:.28rem" onclick="copyTransferMsg('${r.id}')">📋 Copiar datos transferencia</button>`:''}`:``}
       <div id="det-pago-form" style="display:none;margin-top:.5rem"></div>
     </div>`;
   document.getElementById('det-ft').innerHTML=`
@@ -4867,6 +4888,7 @@ async function loadPagosDetalle(resId,totalCLP,res){
   const cel4Color=esDifPos?'var(--gold)':(saldo>100?'var(--danger)':saldo<-100?'var(--info)':'var(--success)');
   // Provisión Booking: visible solo si platform===Booking y hay commission registrada
   const esBooking=(res.platform||'')==='Booking';
+  const esAirbnb=String(res?.platform||'').toLowerCase().includes('airbnb');
   const comProv=esBooking?Math.round(parseFloat(res.platform_commission_clp)||0):0;
   const netEsp=esBooking?Math.round(parseFloat(res.expected_net_clp)||(totalCLP-comProv)):0;
   const _cobranzaLbl=(()=>{if(caja>0&&porPercibir>0)return`Abonos recibidos: ${fmtCLP(caja)} · Por percibir: ${fmtCLP(porPercibir)}`;if(caja>0)return`Abonos recibidos: ${fmtCLP(caja)}`;if(porPercibir>0)return`Pagos por percibir: ${fmtCLP(porPercibir)} · Sin abonos recibidos`;return'';})();
@@ -4884,8 +4906,16 @@ async function loadPagosDetalle(resId,totalCLP,res){
         <div class="det-sum-cell"><span class="det-sum-lbl">Neto operacional</span><span class="det-sum-val" style="color:${caja>0?'var(--success)':'var(--muted)'};font-weight:700">${caja>0?fmtCLP(netoOperacional):'Pendiente de pago real'}</span></div>
         <div class="det-sum-cell"><span class="det-sum-lbl">Por percibir / programado</span><span class="det-sum-val" style="color:var(--warning)">${fmtCLP(porPercibir)}</span></div>
       </div>`;
+    }else if(esAirbnb){
+      const recibidoFerran=caja;
+      const pendienteAirbnb=Math.max(totalCLP-caja,0);
+      sumEl.innerHTML=`<div class="det-sum-grid">
+        <div class="det-sum-cell"><span class="det-sum-lbl">Total estimado CLP</span><span class="det-sum-val">${fmtCLP(totalCLP)}</span></div>
+        <div class="det-sum-cell"><span class="det-sum-lbl">Recibido Ferran</span><span class="det-sum-val" style="color:${recibidoFerran>0?'var(--success)':'var(--muted)'}">${fmtCLP(recibidoFerran)}</span></div>
+        <div class="det-sum-cell"><span class="det-sum-lbl">Pendiente Airbnb</span><span class="det-sum-val" style="color:${pendienteAirbnb>100?'var(--warning)':'var(--success)'}">${fmtCLP(pendienteAirbnb)}</span></div>
+      </div>`;
     }else{
-      // 4 celdas — comportamiento original (Airbnb, Vrbo, Directo, etc.)
+      // 4 celdas — comportamiento original (Directo, Vrbo, etc.)
       sumEl.innerHTML=`${_cobranzaPill}<div class="det-sum-grid">
         <div class="det-sum-cell"><span class="det-sum-lbl">Total estimado CLP</span><span class="det-sum-val">${fmtCLP(totalCLP)}</span></div>
         <div class="det-sum-cell"><span class="det-sum-lbl">Caja recibida</span><span class="det-sum-val" style="color:var(--success)">${fmtCLP(caja)}</span></div>
@@ -4897,7 +4927,7 @@ async function loadPagosDetalle(resId,totalCLP,res){
   if(p.length===0){
     const DIRECT_PAYMENT_PLATFORMS=['Booking','Directo','Web Directa','WhatsApp','Teléfono'];
     const _directPaymentWarn=DIRECT_PAYMENT_PLATFORMS.includes(res.platform||'')&&(res.status==='confirmada');
-    listEl.innerHTML=`${_directPaymentWarn?'<div style="background:#fef2f2;border-left:3px solid #dc2626;padding:.5rem .65rem;border-radius:.3rem;font-size:.7rem;line-height:1.5;color:#991b1b;margin-bottom:.5rem">⚠ <strong>Reserva confirmada sin pagos registrados.</strong> Coordinar cobro con el huésped antes del ingreso.</div>':''}<div class="det-pagos-empty">Sin pagos registrados</div>`;
+    listEl.innerHTML=`${_directPaymentWarn?'<div style="background:#fef2f2;border-left:3px solid #dc2626;padding:.5rem .65rem;border-radius:.3rem;font-size:.7rem;line-height:1.5;color:#991b1b;margin-bottom:.5rem">⚠ <strong>Reserva confirmada sin pagos registrados.</strong> Coordinar cobro con el huésped antes del ingreso.</div>':''}<div class="det-pagos-empty">${esAirbnb?'Sin depósito Airbnb registrado':'Sin pagos registrados'}</div>`;
     return;
   }
   const ST={recibido:'✅ Recibido',programado:'📅 Programado',pendiente:'⏳ Pendiente',retenido_por_plataforma:'🔒 Retenido',anulado:'❌ Anulado',reembolsado:'↩ Reembolsado'};
@@ -4914,6 +4944,10 @@ async function loadPagosDetalle(resId,totalCLP,res){
       ${x.release_due_date?`<span>🔓 Libera: ${fmtD(x.release_due_date)}</span>`:''}
     </div>
     ${x.notes?`<div class="det-pago-note">${x.notes}</div>`:''}
+    <div class="det-pago-foot">
+      ${x.created_at?`<span class="det-pago-reg">🕓 Registrado: ${new Date(x.created_at).toLocaleString('es-CL',{timeZone:'America/Santiago',day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'})}</span>`:''}
+      <span class="det-pago-comp">📎 Sin comprobante adjunto</span>
+    </div>
   </div>`).join('');
 }
 function copyBkPayMsg(id){
