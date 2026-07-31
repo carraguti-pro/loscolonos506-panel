@@ -812,6 +812,8 @@ tr.historico-row:hover td{opacity:.82}
 .det-pago-foot{margin-top:.32rem;padding-top:.28rem;border-top:1px solid rgba(201,168,76,.12);display:flex;flex-wrap:wrap;gap:.45rem .7rem}
 .det-pago-reg{font-size:.58rem;color:var(--muted)}
 .det-pago-comp{font-size:.58rem;color:var(--muted);opacity:.7}
+.det-pago-comp-btn{font-size:.56rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);background:none;border:1px dashed rgba(201,168,76,.4);border-radius:4px;padding:.15rem .45rem;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s}
+.det-pago-comp-btn:hover{background:rgba(201,168,76,.1);border-color:rgba(201,168,76,.7)}
 /* Empty pagos state */
 .det-pagos-empty{color:var(--muted);font-size:.72rem;text-align:center;padding:.65rem;border:1px dashed rgba(0,0,0,.1);border-radius:4px}
 /* Registrar pago button */
@@ -4950,9 +4952,71 @@ async function loadPagosDetalle(resId,totalCLP,res){
     ${x.notes?`<div class="det-pago-note">${x.notes}</div>`:''}
     <div class="det-pago-foot">
       ${x.created_at?`<span class="det-pago-reg">🕓 Registrado: ${new Date(x.created_at).toLocaleString('es-CL',{timeZone:'America/Santiago',day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'})}</span>`:''}
-      <span class="det-pago-comp">📎 Sin comprobante adjunto</span>
+      ${x.receipt?.path?`<span class="det-pago-comp" style="color:#2a6b3f;opacity:1">📄 Comprobante adjunto</span>${CU?.role==='admin'?`<button type="button" class="det-pago-comp-btn" onclick="verComprobantePagoReserva('${x.id}')">Ver comprobante</button>`:''}`:`<span class="det-pago-comp">📎 Sin comprobante adjunto</span>${CU?.role==='admin'?`<button type="button" class="det-pago-comp-btn" onclick="adjuntarComprobantePagoReserva('${x.id}')">Adjuntar comprobante</button>`:''}`}
     </div>
   </div>`).join('');
+}
+async function adjuntarComprobantePagoReserva(paymentId){
+  if(!requireRole(['admin']))return;
+  const rows=await sbGet('reservation_payments',`id=eq.${paymentId}&select=id,reservation_id,payment_source,receipt`);
+  if(!rows?.length){toast('No se encontró el pago','err');return;}
+  const pay=rows[0];
+  if(pay.receipt?.path){toast('Ya existe comprobante adjunto. Reemplazo pendiente de implementación.','');return;}
+  const resId=pay.reservation_id;
+  const inp=document.createElement('input');
+  inp.type='file';inp.accept='application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif';inp.style.display='none';
+  document.body.appendChild(inp);
+  inp.onchange=async()=>{
+    const file=inp.files[0];
+    document.body.removeChild(inp);
+    if(!file)return;
+    const ALLOWED_MIME=['application/pdf','image/jpeg','image/png','image/webp','image/heic','image/heif'];
+    if(!ALLOWED_MIME.includes(file.type)){toast('Tipo de archivo no permitido. Use PDF, JPEG, PNG, WEBP o HEIC/HEIF.','err');return;}
+    if(file.size>8*1024*1024){toast('El archivo supera los 8 MB','err');return;}
+    const extRaw=file.name.split('.').pop().toLowerCase();
+    const ext=extRaw==='jpeg'?'jpg':extRaw;
+    const storagePath=`comprobantes_reservas/${resId}/${paymentId}/comprobante_${Date.now()}.${ext}`;
+    const ur=await fetch(`${SB}/storage/v1/object/evidencias-operaciones/${storagePath}`,{
+      method:'POST',
+      headers:{'apikey':KEY,'Authorization':'Bearer '+(CU?.access_token||KEY),'Content-Type':file.type||'application/octet-stream'},
+      body:file
+    });
+    if(!ur.ok){const bd=await ur.text().catch(()=>'');console.error('[Panel] adjuntarComprobantePagoReserva upload err:',ur.status,bd);toast('Error al subir el comprobante','err');return;}
+    const src=pay.payment_source||'';
+    const source_type=src.includes('Transferencia')?'guest_transfer':src.includes('Airbnb')?'airbnb_deposit':src.includes('Booking')?'booking_deposit':src.includes('Mercado Pago')?'mp_payment':'other';
+    const receipt={bucket:'evidencias-operaciones',path:storagePath,filename:file.name,mime_type:file.type||'application/octet-stream',size_bytes:file.size,uploaded_at:new Date().toISOString(),uploaded_by:CU?.name||CU?.email||'Admin Ferran',source_type};
+    const r=await sbPatch('reservation_payments',paymentId,{receipt});
+    if(!r.ok){const bd=await r.text().catch(()=>'');console.error('[Panel] adjuntarComprobantePagoReserva patch err:',r.status,bd);toast('Error al guardar el comprobante. Intente de nuevo.','err');return;}
+    toast('📄 Comprobante adjuntado','ok');
+    const resObj=RES.find(x=>x.id===resId)||{};
+    await loadPagosDetalle(resId,Math.round(parseFloat(resObj.total_clp||0)),resObj);
+  };
+  inp.click();
+}
+async function verComprobantePagoReserva(paymentId){
+  if(!requireRole(['admin']))return;
+  const rows=await sbGet('reservation_payments',`id=eq.${paymentId}&select=id,receipt`);
+  if(!rows?.length){toast('No hay comprobante adjunto','err');return;}
+  const rec=rows[0].receipt;
+  if(!rec?.path||rec.bucket!=='evidencias-operaciones'||!rec.path.startsWith('comprobantes_reservas/')){
+    toast('No hay comprobante adjunto','err');return;
+  }
+  try{
+    const sr=await fetch(`${SB}/storage/v1/object/sign/evidencias-operaciones/${rec.path}`,{
+      method:'POST',
+      headers:{...sbH(),'Content-Type':'application/json'},
+      body:JSON.stringify({expiresIn:300})
+    });
+    if(!sr.ok)throw new Error('sign error '+sr.status);
+    const sd=await sr.json();
+    let su=sd.signedURL||'';
+    if(su&&!su.startsWith('http'))su=SB+(su.startsWith('/storage/v1')?'':'/storage/v1')+su;
+    if(su){window.open(su,'_blank','noopener,noreferrer');}
+    else throw new Error('empty signedUrl');
+  }catch(e){
+    console.error('[Panel] verComprobantePagoReserva',e);
+    toast('No fue posible abrir el comprobante','err');
+  }
 }
 function copyBkPayMsg(id){
   if(!requireRole(['admin']))return;
