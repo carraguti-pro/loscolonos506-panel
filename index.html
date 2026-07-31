@@ -829,6 +829,9 @@ tr.historico-row:hover td{opacity:.82}
   .det-hero-dates{gap:.5rem;padding:.45rem .7rem}
   .det-fields{grid-template-columns:1fr}
   .det-field-wide{grid-column:1}
+  .det-fields-estadia{grid-template-columns:1fr 1fr}
+  .det-fields-estadia .det-field-wide{grid-column:1/-1}
+  .det-fields-estadia .det-val{overflow-wrap:anywhere}
   .det-fin-grid{grid-template-columns:1fr 1fr}
   .det-sum-grid{grid-template-columns:1fr 1fr}
   #m-detalle .modal-body{padding:.9rem 1rem .85rem}
@@ -4832,12 +4835,12 @@ async function verDet(id){
     </div>
     <div class="det-section">
       <div class="det-section-lbl">Estadía</div>
-      <div class="det-fields">
+      <div class="det-fields det-fields-estadia">
+        <div class="det-field"><span class="det-lbl">País del huésped</span><span class="det-val">${fmtGuestField(r.guest_country)||'—'}</span></div>
+        <div class="det-field"><span class="det-lbl">Idioma</span><span class="det-val">${fmtGuestField(r.guest_language)||'—'}</span></div>
         <div class="det-field"><span class="det-lbl">Email</span><span class="det-val">${r.email||'—'}</span></div>
-        <div class="det-field"><span class="det-lbl">Teléfono</span><span class="det-val">${r.phone||'—'}</span></div>
-        <div class="det-field"><span class="det-lbl">Método de pago</span><span class="det-val">${displayMetodoPagoFicha(r)}</span></div>
-        ${r.guest_country?`<div class="det-field"><span class="det-lbl">País del huésped</span><span class="det-val">${fmtGuestField(r.guest_country)}</span></div>`:''}
-        ${r.guest_language?`<div class="det-field"><span class="det-lbl">Idioma</span><span class="det-val">${fmtGuestField(r.guest_language)}</span></div>`:''}
+        <div class="det-field"><span class="det-lbl">WhatsApp</span><span class="det-val">${r.phone||'—'}</span></div>
+        <div class="det-field det-field-wide"><span class="det-lbl">Método de pago</span><span class="det-val">${displayMetodoPagoFicha(r)}</span></div>
         ${r.notes?`<div class="det-field det-field-wide"><span class="det-lbl">Notas</span><span class="det-val">${r.notes}</span></div>`:''}
       </div>
     </div>
