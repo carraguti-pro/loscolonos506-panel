@@ -315,7 +315,7 @@ export default async function handler() {
       const _pmtRes = await fetch(
         `${SUPABASE_URL}/rest/v1/reservation_payments` +
         `?reservation_id=in.(${_ids})` +
-        `&select=reservation_id,payment_status,amount_clp,payment_date_received,payment_method`,
+        `&select=reservation_id,payment_status,amount_clp,payment_date_received,payment_source`,
         { headers: _sbH }
       );
       const _pmtRows = _pmtRes.ok ? await _pmtRes.json() : [];
