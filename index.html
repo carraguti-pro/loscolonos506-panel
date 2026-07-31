@@ -820,6 +820,8 @@ tr.historico-row:hover td{opacity:.82}
 .btn-reg-pago-primary{background:rgba(201,168,76,.16);border-style:solid;border-color:rgba(201,168,76,.58)}
 .btn-reg-pago-primary:hover{background:rgba(201,168,76,.3);border-color:rgba(201,168,76,.82)}
 .det-cobro-lbl{font-size:.5rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:.55rem;margin-bottom:.16rem}
+.det-admin-actions-grid{display:grid;grid-template-columns:1fr 1fr;gap:.28rem;margin-top:.28rem}
+.det-admin-actions-grid .btn-reg-pago{margin-top:0}
 /* Nuevo pago form */
 .det-np-form{border:1px solid rgba(201,168,76,.22);border-radius:6px;padding:.7rem .85rem;background:rgba(201,168,76,.03)}
 .det-np-title{font-size:.46rem;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:.45rem}
@@ -4859,8 +4861,7 @@ async function verDet(id){
       <div class="det-section-lbl">Pagos / Abonos</div>
       <div id="det-pagos-summary"></div>
       <div id="det-pagos-list"><div style="color:var(--muted);font-size:.75rem;padding:.5rem 0">Cargando pagos…</div></div>
-      ${CU?.role==='admin'?`<button type="button" class="btn-reg-pago btn-reg-pago-primary" onclick="showDetPagoForm('${r.id}',${totalCLP})">+ Registrar pago</button>
-      ${['Booking','Directo','Web Directa','WhatsApp','Teléfono'].includes(r.platform)?`<div class="det-cobro-lbl">Mensajes de cobro</div><button type="button" class="btn-reg-pago" style="border-color:rgba(0,53,128,.35);color:#003580;background:rgba(0,53,128,.04);margin-top:.28rem" onclick="copyBkPayMsg('${r.id}')">📋 Copiar mensaje de pago</button><button type="button" class="btn-reg-pago" style="border-color:rgba(0,158,65,.35);color:#007a30;background:rgba(0,158,65,.04);margin-top:.28rem" onclick="copyMpPayMsg('${r.id}')">📋 Copiar mensaje Mercado Pago</button><button type="button" class="btn-reg-pago" style="border-color:rgba(0,100,80,.35);color:#005540;background:rgba(0,100,80,.04);margin-top:.28rem" onclick="copyTransferMsg('${r.id}')">📋 Copiar datos transferencia</button>`:''}`:``}
+      ${CU?.role==='admin'?`${['Booking','Directo','Web Directa','WhatsApp','Teléfono'].includes(r.platform)?`<div class="det-cobro-lbl" style="margin-top:.5rem">Acciones de pago</div><div class="det-admin-actions-grid"><button type="button" class="btn-reg-pago btn-reg-pago-primary" onclick="showDetPagoForm('${r.id}',${totalCLP})">+ Registrar pago</button><button type="button" class="btn-reg-pago" style="border-color:rgba(0,53,128,.35);color:#003580;background:rgba(0,53,128,.04)" onclick="copyBkPayMsg('${r.id}')">📋 Copiar mensaje de pago</button><button type="button" class="btn-reg-pago" style="border-color:rgba(0,158,65,.35);color:#007a30;background:rgba(0,158,65,.04)" onclick="copyMpPayMsg('${r.id}')">📋 Copiar mensaje Mercado Pago</button><button type="button" class="btn-reg-pago" style="border-color:rgba(0,100,80,.35);color:#005540;background:rgba(0,100,80,.04)" onclick="copyTransferMsg('${r.id}')">📋 Copiar datos transferencia</button></div>`:`<button type="button" class="btn-reg-pago btn-reg-pago-primary" onclick="showDetPagoForm('${r.id}',${totalCLP})">+ Registrar pago</button>`}`:``}
       <div id="det-pago-form" style="display:none;margin-top:.5rem"></div>
     </div>`;
   document.getElementById('det-ft').innerHTML=`
