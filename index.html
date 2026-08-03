@@ -191,6 +191,9 @@ tr.historico-row:hover td{opacity:.82}
 .b-direct{background:rgba(42,122,82,.1);color:#2E6B45}
 .b-web{background:rgba(90,80,160,.1);color:#5A50A0}
 .b-vrbo{background:rgba(0,95,189,.1);color:#005FBD}
+.b-pendiente-reporte{background:rgba(201,168,76,.12);color:#7A5F10}
+.b-reporte-env{background:rgba(100,116,139,.12);color:#4A5568}
+.b-corregir{background:rgba(201,168,76,.14);color:#7A5F10}
 
 /* ══════════════════════════════════════════
    CALENDARIO — Luxury Premium
@@ -6736,7 +6739,7 @@ async function loadServicios(){
   if(CU?.role==='staff'){
     const _svIds=SV_RES.filter(x=>x.id).map(x=>x.id);
     if(_svIds.length){
-      const _crRows=await sbGet('checkout_reports','reservation_id=in.('+_svIds.join(',')+')'+'&select=reservation_id,checklist&order=created_at.desc&limit=200');
+      const _crRows=await sbGet('checkout_reports','reservation_id=in.('+_svIds.join(',')+')'+'&select=reservation_id,estado,checklist&order=created_at.desc&limit=200');
       if(!Array.isArray(_crRows)){
         _svVerifyOk=false;
       }else{
@@ -6749,7 +6752,7 @@ async function loadServicios(){
             const cur=_prMap.get(rid);
             if(!cur||_prPriority.indexOf(st)<_prPriority.indexOf(cur))_prMap.set(rid,st);
           }
-          if(cl.tipo==='checkout')_crSet.add(rid);
+          if(cl.tipo==='checkout'){const _est=String(row.estado||cl.estado||'').toLowerCase();if(!['rechazado','cancelado','cancelada'].includes(_est))_crSet.add(rid);}
         });
       }
     }
@@ -6763,6 +6766,19 @@ async function loadServicios(){
     if(pr==='cancelado')return'activo';
     if(_crSet.has(x.id))return'en_revision';
     return'activo';
+  };
+  const _svOpPill=x=>{
+    if(CU?.role!=='staff')return'';
+    const pr=_prMap.get(x.id);
+    const pill=(lbl,cls)=>`<span class="badge ${cls}" style="margin-bottom:.2rem">${lbl}</span>`;
+    if(pr==='pagado')return pill('PAGADO','b-paid');
+    if(pr==='rechazado')return pill('RECHAZADO','b-cancelled');
+    if(pr==='observado')return pill('CORREGIR','b-corregir');
+    if(pr==='aprobado')return pill('APROBADO','b-confirmed');
+    if(pr==='pendiente')return pill('PAGO SOLICITADO','b-pending');
+    if(pr==='revisado')return pill('EN REVISIÓN','b-pending');
+    if(_crSet.has(x.id))return pill('REPORTE ENVIADO','b-reporte-env');
+    return pill('PENDIENTE REPORTE','b-pendiente-reporte');
   };
   const _osActivo=os=>['salida_reciente','salida_hoy','huesped_alojado'].includes(os);
   const svBtnLbl=os=>['salida_reciente','salida_hoy'].includes(os)?'⚡ REPORTE CHECK-OUT':os==='huesped_alojado'?'Reporte check-out':['bloqueada_admin','mantencion','mantenimiento'].includes(os)?'Registrar observación':'Preparar ingreso';
@@ -6786,7 +6802,7 @@ async function loadServicios(){
     }else{
       actionHTML=`<button class="${svBtnCls(os)}" onclick="openReporte(${i})">${svBtnLbl(os)}</button>`;
     }
-    return`<tr${extra}><td><strong>${x.guest_name||'—'}</strong></td><td>${fmtD(x.check_in)}</td><td>${fmtD(x.check_out)}</td><td>${x.nights||calcN(x.check_in,x.check_out)}</td><td>${platBadge(x.platform)}</td><td>${stBadge(os)}</td><td>${actionHTML}</td></tr>`;
+    return`<tr${extra}><td><strong>${x.guest_name||'—'}</strong></td><td>${fmtD(x.check_in)}</td><td>${fmtD(x.check_out)}</td><td>${x.nights||calcN(x.check_in,x.check_out)}</td><td>${platBadge(x.platform)}</td><td>${stBadge(os)}</td><td><div style="display:flex;flex-direction:column;gap:.2rem;align-items:flex-start">${_svOpPill(x)}${actionHTML}</div></td></tr>`;
   };
   if(r.length){
     const _idx=r.map((x,i)=>({x,i,os:svOpStatus(x,hoy)}));
