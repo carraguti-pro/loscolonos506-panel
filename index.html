@@ -2470,6 +2470,7 @@ Las instrucciones activas aparecen sobre la tabla de reservas.
   <div class="modal">
     <div class="modal-hd"><div><div class="modal-title" id="rep-modal-title">Reporte de Operaciones</div><div id="rep-ctx" style="display:none;font-size:.57rem;color:var(--muted);margin-top:.1rem"></div></div><button class="modal-x" onclick="closeModal('m-reporte')">✕</button></div>
     <div class="modal-body">
+      <div id="rep-owner-notes-aviso" style="display:none;margin-bottom:.75rem;padding:.6rem .85rem;background:#fffef0;border:1px solid rgba(201,168,76,.3);border-left:3px solid var(--gold);border-radius:.45rem"></div>
       <div class="fg" id="rep-grp-tipo"><label class="fl">Tipo</label><select class="fs" id="rep-tipo"><option value="checkout">Check-Out</option><option value="checkin">Check-In</option><option value="maintenance">Mantención</option><option value="incident">Incidencia</option></select></div>
       <div class="fg"><label class="fl">Fecha de operación</label><input type="date" class="fi" id="rep-fecha"></div>
       <div class="form-row" id="rep-grp-horas"><div class="fg"><label class="fl">Hora inicio limpieza/revisión</label><input type="time" class="fi" id="rep-hora-in"></div><div class="fg"><label class="fl">Hora término limpieza/revisión</label><input type="time" class="fi" id="rep-hora-out"></div></div>
@@ -2614,7 +2615,7 @@ const MESES_DATA=[
 ];
 
 let CU=null,RES=[],FLT='all',fichas=0,EDIT_RES_ID=null,EXT_BLOCKS=[],RECOVERY_TOKEN=null;
-let SV_RES=[],REPORTE_CTX=null,REPORTE_MANT_MODE=false; // Servicios: reservas cargadas y contexto activo para el reporte
+let SV_RES=[],REPORTE_CTX=null,REPORTE_MANT_MODE=false,_ACTIVE_OWNER_NOTES=[]; // Servicios: reservas cargadas y contexto activo para el reporte
 let _svPagoLock=false,_svReporteLock=false,_svGastoOpLock=false;
 let SV_INS=[],REPONER_CTX=null; // Servicios: insumos cargados y contexto activo para reponer
 let OPS_REPORTS=[],EDIT_OPS_CTX=null; // Admin: reportes operaciones cargados y contexto activo para editar
@@ -6832,6 +6833,7 @@ async function loadOwnerNotes(){
   const data=await sbGet('checkout_reports','order=created_at.desc&limit=50');
   const allNotes=Array.isArray(data)?data.filter(r=>r.checklist?.tipo==='owner_note'):[];
   const activeNotes=allNotes.filter(r=>(r.checklist?.estado||'activa')==='activa');
+  _ACTIVE_OWNER_NOTES=activeNotes;
   // Only active notes are ever rendered — resolved notes are archived
   const renderNote=(r,compact=false)=>{
     const fecha=r.created_at?new Date(r.created_at).toLocaleString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'America/Santiago'}):'—';
@@ -7078,6 +7080,17 @@ function openReporte(idx){
   if(pagoCtxEl){
     if(!REPORTE_MANT_MODE&&REPORTE_CTX?.guest_name){pagoCtxEl.textContent='Reserva: '+REPORTE_CTX.guest_name+' · Check-out: '+fmtD(REPORTE_CTX.check_out);pagoCtxEl.style.color='#1A468C';}
     else{pagoCtxEl.textContent='Seleccione un reporte check-out para solicitar pago de operación.';pagoCtxEl.style.color='';}
+  }
+  // Owner instructions banner — safe rendering via local escaper (same pattern as esc() used elsewhere)
+  const _rAviso=document.getElementById('rep-owner-notes-aviso');
+  if(_rAviso){
+    if(_ACTIVE_OWNER_NOTES.length>0){
+      const _escN=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      _rAviso.innerHTML='<div style="font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#a07000;margin-bottom:.4rem">📋 Instrucciones antes de operar</div>'+_ACTIVE_OWNER_NOTES.map(n=>'<div style="font-size:.79rem;color:var(--ink);white-space:pre-wrap;line-height:1.5;margin-bottom:.3rem">'+_escN(n.notes)+'</div>').join('')+'<div style="font-size:.63rem;color:#7a5f10;margin-top:.3rem;font-style:italic">Revisa estas instrucciones antes de guardar el reporte.</div>';
+      _rAviso.style.display='';
+    }else{
+      _rAviso.style.display='none';
+    }
   }
   svSetPagoMantMode(REPORTE_MANT_MODE);
   openModal('m-reporte');
