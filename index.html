@@ -1362,24 +1362,32 @@ tr.historico-row:hover td{opacity:.82}
       <button class="btn btn-ghost btn-xs" style="font-size:.7rem;color:var(--muted);border-color:rgba(0,0,0,.12)" onclick="svToggleGuia()">📘 Ver guía rápida Staff</button>
       <div id="sv-guia-content" style="display:none;margin-top:.5rem;background:#f8f9fb;border:1px solid rgba(0,0,0,.07);border-left:3px solid #1A468C;border-radius:.45rem;padding:.65rem .9rem;font-size:.74rem;color:var(--ink);line-height:1.65;white-space:pre-wrap">GUÍA RÁPIDA — SERVICIOS Y OPERACIONES
 
-ESTADOS EN TABLA DE RESERVAS
-⚡ REPORTE CHECK-OUT — Acción requerida. Presenta el informe de salida y solicita pago de operación.
-⏳ EN REVISIÓN / PAGO PENDIENTE — Reporte o pago ya enviado. Espera confirmación del administrador.
-⚠ CORREGIR REPORTE — El administrador solicitó corrección. Consulta antes de reenviar.
-✅ CHECK-OUT CERRADO — Operación completa y pagada. Sin acción requerida.
-⚠ VERIFICAR ESTADO — No se pudo confirmar el estado. No operes hasta que el sistema se actualice.
+ESTADOS OPERACIONALES EN SERVICIOS
+◆ PENDIENTE REPORTE — Sin reporte de check-out guardado. Completa el reporte primero.
+◆ REPORTE ENVIADO — Reporte guardado en sistema. Ya puedes solicitar Pago Operación.
+◆ PAGO SOLICITADO — Solicitud enviada. Espera revisión del administrador.
+◆ APROBADO / EN REVISIÓN — Pago aprobado o en proceso de verificación.
+◆ CORREGIR — El administrador solicitó corrección. Revisa y ajusta antes de reenviar.
+◆ RECHAZADO — Solicitud rechazada. Consulta con el administrador.
+◆ PAGADO — Operación completa y pagada. Sin acción requerida.
 
-FLUJO PAGO DE OPERACIÓN
-1. Selecciona la reserva con botón ⚡ REPORTE CHECK-OUT
-2. Completa el reporte de salida (checklist)
-3. En "Pago Operación": ingresa honorario y fichas de lavandería
+FLUJO CORRECTO
+1. Selecciona la reserva → abre el reporte check-out
+2. Completa y guarda el reporte de salida (checklist)
+3. Solo después de guardar: accede a Pago Operación → ingresa honorario y fichas de lavandería
 4. Haz clic en SOLICITAR PAGO OPERACIÓN
-5. Espera confirmación del administrador (verás ⏳ EN REVISIÓN)
+5. Espera revisión y aprobación del administrador
+
+⚠ "Guarda primero el reporte check-out para habilitar el pago de operación."
 
 INSTRUCCIONES DEL PROPIETARIO
-Las instrucciones activas aparecen sobre la tabla de reservas.
+Las instrucciones activas pueden aparecer sobre la tabla de reservas y dentro del modal de reporte.
 🟢 Sin instrucciones → sin requisitos especiales para esta operación
-🟡 / 🔴 Con instrucciones → leer y seguir antes de comenzar</div>
+🟡 / 🔴 Con instrucciones → leer y seguir antes de comenzar
+
+REGISTROS ADICIONALES — Gastos, reembolsos e insumos
+Debajo de Pago Operación encontrarás registros adicionales.
+Son independientes del pago operacional y pueden solicitarse en cualquier orden.</div>
     </div>
     <!-- ── Notas internas / Instrucciones del propietario ── -->
     <div id="sv-owner-notes-block" style="margin-bottom:1.2rem">
