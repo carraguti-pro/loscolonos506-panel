@@ -510,7 +510,7 @@ tr.historico-row:hover td{opacity:.82}
 
 /* Toast */
 .toast{position:fixed;bottom:1.5rem;right:1.5rem;z-index:500;background:var(--navy);color:#fff;padding:.7rem 1.3rem;font-size:.75rem;border-left:3px solid var(--gold);transform:translateY(60px);opacity:0;transition:all .25s;pointer-events:none;border-radius:var(--r)}
-.toast.show{transform:translateY(0);opacity:1}.toast.ok{border-left-color:var(--success)}.toast.err{border-left-color:var(--danger)}
+.toast.show{transform:translateY(0);opacity:1}.toast.ok{border-left-color:var(--success)}.toast.err{border-left-color:var(--danger)}.toast.warn{background:#fff7ed;color:#7c2d12;border-left-color:#d97706}
 .empty{text-align:center;padding:2rem;color:var(--muted);font-size:.8rem}
 .spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(0,0,0,.1);border-top-color:var(--gold);border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -6921,7 +6921,7 @@ async function solicitarPago(){
       return;
     }
     const _hasCheckout=_existing.some(r=>{const tipo=String(r.checklist?.tipo||'').toLowerCase();const est=String(r.estado||r.checklist?.estado||'').toLowerCase();return tipo==='checkout'&&!['rechazado','cancelado','cancelada'].includes(est);});
-    if(!_hasCheckout){toast('Primero guarda el reporte check-out para solicitar pago de operación.','err');return;}
+    if(!_hasCheckout){toast('Guarda primero el reporte check-out para habilitar el pago de operación.','warn');return;}
     const _activePR=_existing.find(r=>
       r.checklist?.tipo==='payment_request'&&
       (r.checklist?.subtipo==='operacion'||r.checklist?.payment_type==='operacion')&&
