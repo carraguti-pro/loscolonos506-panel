@@ -6920,6 +6920,8 @@ async function solicitarPago(){
       toast('⚠ No se pudo verificar si ya existe una solicitud de pago. Actualice e intente nuevamente.','err');
       return;
     }
+    const _hasCheckout=_existing.some(r=>{const tipo=String(r.checklist?.tipo||'').toLowerCase();const est=String(r.estado||r.checklist?.estado||'').toLowerCase();return tipo==='checkout'&&!['rechazado','cancelado','cancelada'].includes(est);});
+    if(!_hasCheckout){toast('Primero guarda el reporte check-out para solicitar pago de operación.','err');return;}
     const _activePR=_existing.find(r=>
       r.checklist?.tipo==='payment_request'&&
       (r.checklist?.subtipo==='operacion'||r.checklist?.payment_type==='operacion')&&
