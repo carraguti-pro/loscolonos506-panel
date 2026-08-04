@@ -3025,6 +3025,24 @@ async function loadSolicitudesPago(){
   const allReqs=data.filter(r=>r.checklist?.tipo==='payment_request');
   const opRows=allReqs.filter(r=>r.checklist?.payment_type==='operacion'||r.checklist?.subtipo==='operacion');
   const gastoRows=allReqs.filter(r=>r.checklist?.payment_type==='gasto_reembolso_operativo');
+  // C1B — checkout context map (no extra DB query; data already fetched above)
+  const checkoutByRes={};
+  data.filter(r=>r.checklist?.tipo==='checkout').forEach(r=>{
+    if(r.reservation_id&&!checkoutByRes[r.reservation_id])checkoutByRes[r.reservation_id]=r;
+  });
+  const _escCR=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const _hasSit=cr=>Object.values(cr.checklist?.situaciones||{}).some(s=>s?.si);
+  const _efLbl=v=>({listo:'Listo',con_observaciones:'Con observaciones',con_danos:'Con daños',pendiente:'Pendiente',en_proceso:'En proceso'}[v]||_escCR(v)||'Sin estado');
+  const crCtxHTML=resId=>{
+    const cr=checkoutByRes[resId];
+    if(!cr)return`<div style="font-size:.63rem;color:var(--muted);margin:.3rem 0 .2rem;padding:.25rem .45rem;background:rgba(0,0,0,.03);border-radius:.3rem;border-left:2px solid rgba(0,0,0,.1)">📋 Reporte check-out: <em>Sin reporte registrado</em></div>`;
+    const ef=_efLbl(cr.checklist?.estado_final);
+    const sit=_hasSit(cr);
+    const by=_escCR(cr.created_by||'—');
+    const fec=cr.created_at?new Date(cr.created_at).toLocaleDateString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric'}):'—';
+    const sitStr=sit?'· <span style="color:#d97706;font-weight:600">⚠ Situaciones registradas</span>':'· <span style="color:var(--muted)">sin situaciones especiales</span>';
+    return`<div style="font-size:.63rem;color:var(--muted);margin:.3rem 0 .2rem;padding:.25rem .45rem;background:rgba(0,0,0,.03);border-radius:.3rem;border-left:2px solid ${sit?'#d97706':'rgba(0,0,0,.1)'}">📋 Reporte check-out: <strong style="color:var(--ink)">${ef}</strong> ${sitStr} · ${by} · ${fec}</div>`;
+  };
   const stLbl=v=>({pendiente:'Pendiente',observado:'Observado',revisado:'Revisado',aprobado:'Aprobado para pago',rechazado:'Rechazado',pagado:'Pagado',cancelado:'Cancelado'}[v]||v||'Pendiente');
   const stCol=v=>({pendiente:'#a07000',observado:'#a07000',revisado:'#1A468C',aprobado:'#2a7a3b',rechazado:'#c0392b',pagado:'#166534',cancelado:'#888'}[v]||'#a07000');
   const fmtMonto=n=>n!=null&&n!==''?'$'+Number(n).toLocaleString('es-CL'):'—';
@@ -3065,6 +3083,7 @@ async function loadSolicitudesPago(){
           ${(cl.check_in||cl.check_out)?`<div><span style="color:var(--muted)">Check-in/out: </span>${cl.check_in?fmtD(cl.check_in):'—'} → ${cl.check_out?fmtD(cl.check_out):'—'}</div>`:''}
         </div>
         ${montoHTML}
+        ${crCtxHTML(r.reservation_id)}
         ${waOpBtn}
         ${comprobOpDiv}
         ${reviewActionsHTML(r.id,cl)}`);
@@ -7168,6 +7187,9 @@ async function saveReporte(){
       if(uploadFailed)toast('⚠ Reporte guardado sin evidencia','err');
       else if(uploadedPath)toast('✅ Reporte guardado con evidencia','ok');
       else toast('✅ Reporte guardado','ok');
+      if(!REPORTE_MANT_MODE&&payload.checklist?.tipo==='checkout'&&REPORTE_CTX?.id&&rowId&&CU?.access_token){
+        fetch('/.netlify/functions/checkout-report-alert',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+CU.access_token},body:JSON.stringify({row_id:rowId,reservation_id:REPORTE_CTX.id})}).catch(err=>console.warn('[Panel] checkout alert failed:',err?.message||err));
+      }
       closeModal('m-reporte');
     }else{toast('Error al guardar reporte — intente nuevamente','err');}
   }finally{
