@@ -1561,7 +1561,7 @@ Son independientes del pago operacional y pueden solicitarse en cualquier orden.
       <a class="nav-item" onclick="showPage('liquidaciones')"><span>📊</span> Liquidaciones</a>
       <a class="nav-item" onclick="showPage('comisiones-booking')"><span>📑</span> Comisiones Booking</a>
       <div class="sb-sec">Operaciones</div>
-      <a class="nav-item" onclick="showPage('reportes-ops')"><span>📝</span> Reportes de Ops.</a>
+      <a class="nav-item" onclick="showPage('reportes-ops')"><span>📝</span> Revisión Operacional</a>
       <a class="nav-item" onclick="showPage('solicitudes-pago')"><span>💳</span> Solicitudes de Pago</a>
       <a class="nav-item" onclick="showPage('resumen-ops')"><span>📊</span> Resumen Operacional</a>
       <div class="sb-sec">Sistema</div>
@@ -2809,7 +2809,7 @@ function showPage(p){
   document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
   document.getElementById('page-'+p)?.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(x=>{if(x.getAttribute('onclick')?.includes("'"+p+"'"))x.classList.add('active');});
-  const titles={dashboard:'Dashboard',reservations:'Reservas',calendar:'Calendario',finances:'Finanzas',liquidaciones:'Liquidaciones','comisiones-booking':'Comisiones Booking · Provisiones',config:'Configuración','reportes-ops':'Reportes de Operaciones','solicitudes-pago':'Solicitudes de Pago Servicios','resumen-ops':'Resumen Operacional'};
+  const titles={dashboard:'Dashboard',reservations:'Reservas',calendar:'Calendario',finances:'Finanzas',liquidaciones:'Liquidaciones','comisiones-booking':'Comisiones Booking · Provisiones',config:'Configuración','reportes-ops':'Revisión Operacional','solicitudes-pago':'Solicitudes de Pago Servicios','resumen-ops':'Resumen Operacional'};
   document.getElementById('topbar-title').textContent=titles[p]||p;
   if(p==='reservations')loadReservas();
   if(p==='calendar'){
@@ -2839,6 +2839,8 @@ async function loadOpsReports(){
   list.innerHTML='<div class="empty" style="padding:1rem 0">Cargando...</div>';
   const data=await sbGet('checkout_reports','order=created_at.desc&limit=200');
   const rows=Array.isArray(data)?data.filter(r=>r.checklist?.tipo!=='payment_request'&&r.checklist?.tipo!=='owner_note'):[];
+  const prByRes={};
+  if(Array.isArray(data))data.filter(r=>r.checklist?.tipo==='payment_request'&&r.reservation_id).forEach(r=>{if(!prByRes[r.reservation_id])prByRes[r.reservation_id]=r;});
   OPS_REPORTS=rows;
   if(!rows.length){list.innerHTML='<div class="empty" style="padding:1.5rem 0">Sin reportes registrados.</div>';return;}
   const efLabel=v=>({en_proceso:'En proceso',listo:'Listo',con_observaciones:'Con observaciones',con_danos:'Con daños / incidencia',good:'Buen estado',issues:'Con observaciones',damage:'Con daños',pendiente_lavanderia:'Pendiente lavandería',pendiente_revision:'Pendiente revisión',operativo:'Departamento operativo',cerrado:'Cerrado'}[v]||v||'—');
@@ -2863,6 +2865,33 @@ async function loadOpsReports(){
     const isMantObs=cl.tipo==='maintenance_observation';
     const maintAlert=(isMantObs&&ef==='operativo')?`<div style="margin:.45rem 0 .1rem;padding:.35rem .65rem;background:#ecfdf5;border:1px solid #6ee7b733;border-left:3px solid #2a7a3b;border-radius:.35rem;font-size:.67rem;color:#166534;display:flex;align-items:center;gap:.4rem"><span>🟢</span><span><strong>Departamento operativo</strong> · Revisar desbloqueo de ${cl.check_in?fmtD(cl.check_in):'?'} → ${cl.check_out?fmtD(cl.check_out):'?'}</span></div>`:'';
     const notesSnip=(isMantObs&&r.notes)?`<div style="font-size:.67rem;margin:.35rem 0 .1rem;padding:.32rem .55rem;background:#f9f9f9;border-radius:.3rem;color:var(--ink)"><span style="color:var(--muted)">Obs: </span>${r.notes}</div>`:'';
+    const _pr=r.reservation_id?prByRes[r.reservation_id]:null;
+    let prSection='';
+    if(_pr){
+      window._SOLIC_MAP=window._SOLIC_MAP||{};
+      window._SOLIC_MAP[_pr.id]=_pr.checklist;
+      const pcl=_pr.checklist||{};
+      const _fmtM=n=>n!=null&&n!==''?'$'+Number(n).toLocaleString('es-CL'):'—';
+      const partes=[];
+      if(pcl.honorario_base)partes.push(`<span><span style="color:var(--muted)">Honorario: </span>${_fmtM(pcl.honorario_base)}</span>`);
+      if(pcl.fichas_lavanderia)partes.push(`<span><span style="color:var(--muted)">Fichas: </span>${pcl.fichas_lavanderia} × ${_fmtM(pcl.valor_ficha||1500)}</span>`);
+      if(pcl.total_solicitado)partes.push(`<span><strong>Total: ${_fmtM(pcl.total_solicitado)}</strong></span>`);
+      else if(pcl.monto)partes.push(`<span><strong>Monto: ${_fmtM(pcl.monto)}</strong></span>`);
+      const montoHTML=partes.length?`<div style="font-size:.67rem;display:flex;gap:.75rem;flex-wrap:wrap;margin-top:.3rem;border-top:1px solid rgba(0,0,0,.05);padding-top:.3rem">${partes.join('')}</div>`:'';
+      const fechaSolic=_pr.created_at?new Date(_pr.created_at).toLocaleString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+      prSection=`<div style="margin:.6rem 0 0;padding:.55rem .65rem;background:rgba(0,0,0,.025);border-radius:.4rem;border:1px solid rgba(0,0,0,.07)">
+        <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:.35rem">💰 Solicitud de pago</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.15rem .6rem;font-size:.67rem">
+          <div><span style="color:var(--muted)">Concepto: </span>${pcl.concepto||'—'}</div>
+          <div><span style="color:var(--muted)">Solicitado por: </span>${_pr.created_by||'—'}</div>
+          <div><span style="color:var(--muted)">Fecha: </span>${fechaSolic}</div>
+        </div>
+        ${montoHTML}
+        ${reviewActionsHTML(_pr.id,pcl)}
+      </div>`;
+    }else if(r.reservation_id){
+      prSection='<div style="font-size:.62rem;margin:.35rem 0 .1rem;padding:.22rem .5rem;background:rgba(0,0,0,.03);border-radius:.3rem;border-left:2px solid rgba(0,0,0,.12);color:var(--muted)">💰 Sin solicitud de pago</div>';
+    }
     return `<div style="border:1px solid rgba(0,0,0,.08);border-radius:.45rem;padding:.75rem .9rem;margin-bottom:.55rem;background:#fff">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem">
         <div>
@@ -2885,6 +2914,7 @@ async function loadOpsReports(){
       </div>
       ${isMantObs?'':`<div style="font-size:.65rem"><span style="color:var(--muted)">Situaciones: </span>${sitTags(cl.situaciones)}</div>`}
       ${notesSnip}${maintAlert}
+      ${prSection}
       <div style="font-size:.54rem;color:var(--muted);margin-top:.35rem;border-top:1px solid rgba(0,0,0,.05);padding-top:.3rem">${fechaReg}</div>
     </div>`;
   }).join('');
@@ -3372,7 +3402,8 @@ async function _saveReview(rowId,patch){
   delete _revState[rowId];
   const msg=patch.estado==='aprobado'?'✅ Solicitud aprobada para pago':patch.estado==='rechazado'?'Solicitud rechazada':'Observación guardada';
   toast(msg,'ok');
-  await loadSolicitudesPago();
+  const _actPg=document.querySelector('.page.active')?.id;
+  if(_actPg==='page-reportes-ops')await loadOpsReports();else await loadSolicitudesPago();
 }
 
 // ══ MARCAR COMO PAGADO ═════════════════════════════════════
