@@ -6806,7 +6806,7 @@ async function loadServicios(){
   if(CU?.role==='staff'){
     const _svIds=SV_RES.filter(x=>x.id).map(x=>x.id);
     if(_svIds.length){
-      const _crRows=await sbGet('checkout_reports','reservation_id=in.('+_svIds.join(',')+')'+'&select=reservation_id,estado,checklist&order=created_at.desc&limit=200');
+      const _crRows=await sbGet('checkout_reports','reservation_id=in.('+_svIds.join(',')+')'+'&select=reservation_id,checklist&order=created_at.desc&limit=200');
       if(!Array.isArray(_crRows)){
         _svVerifyOk=false;
       }else{
@@ -6859,6 +6859,8 @@ async function loadServicios(){
       const ss=_svStaffState(x);
       if(ss==='corregir'){
         actionHTML=`<span style="font-size:.67rem;font-weight:600;color:#c0392b">⚠ CORREGIR REPORTE</span>`;
+      }else if(ss==='en_revision'&&!_prMap.has(x.id)){
+        actionHTML=`<button class="btn btn-ghost btn-xs" onclick="svSelectRes(${i})">Solicitar pago →</button>`;
       }else if(ss==='en_revision'){
         actionHTML=`<span style="font-size:.67rem;font-weight:600;color:#a07000">⏳ EN REVISIÓN / PAGO PENDIENTE</span>`;
       }else if(!_svVerifyOk&&['salida_reciente','salida_hoy'].includes(os)){
@@ -6983,6 +6985,16 @@ function resetChk(){
   const lbl=document.getElementById('chk-pct');if(lbl)lbl.textContent='0% completado';
 }
 function adjF(d){fichas=Math.max(0,fichas+d);const fc=document.getElementById('f-count');if(fc)fc.textContent=fichas;const hon=parseInt(document.getElementById('sv-honorario')?.value)||40000;const total=hon+fichas*1500;const fmt=v=>'$'+v.toLocaleString('es-CL');const op=document.getElementById('sv-total-op');if(op)op.textContent=fmt(total);const tot=document.getElementById('sv-total');if(tot)tot.textContent=fmt(total);}
+function svSelectRes(idx){
+  REPORTE_CTX=(typeof idx==='number'&&idx>=0&&SV_RES[idx])?SV_RES[idx]:null;
+  REPORTE_MANT_MODE=false;
+  const pagoCtxEl=document.getElementById('sv-pago-contexto');
+  if(pagoCtxEl){
+    if(REPORTE_CTX?.guest_name){pagoCtxEl.textContent='Reserva: '+REPORTE_CTX.guest_name+' · Check-out: '+fmtD(REPORTE_CTX.check_out);pagoCtxEl.style.color='#1A468C';}
+    else{pagoCtxEl.textContent='Seleccione un reporte check-out para solicitar pago de operación.';pagoCtxEl.style.color='';}
+  }
+  svSetPagoMantMode(false);
+}
 function svSetPagoMantMode(isMaint){
   const av=document.getElementById('sv-pago-mant-aviso');if(av)av.style.display=isMaint?'':'none';
   const btn=document.getElementById('sv-pago-btn');if(btn){btn.disabled=isMaint;btn.style.opacity=isMaint?'.4':'';}
@@ -7167,6 +7179,15 @@ async function saveReporte(){
   const _btn=document.getElementById('sv-reporte-save-btn');
   const _btxt=_btn?.textContent;
   if(_btn){_btn.disabled=true;_btn.textContent='Procesando…';}
+  if(!REPORTE_MANT_MODE&&REPORTE_CTX?.id){
+    const _dupCheck=await sbGet('checkout_reports','reservation_id=eq.'+REPORTE_CTX.id+'&select=id,checklist&order=created_at.desc&limit=5');
+    if(Array.isArray(_dupCheck)&&_dupCheck.some(r=>r.checklist?.tipo==='checkout')){
+      toast('Ya existe un reporte check-out para esta reserva.','warn');
+      _svReporteLock=false;
+      if(_btn){_btn.disabled=false;_btn.textContent=_btxt;}
+      return;
+    }
+  }
   // ── Paso 1: UUID client-side ──
   const rowId=crypto.randomUUID();
   // ── Paso 2: Upload evidencia (opcional, antes del INSERT) ──
