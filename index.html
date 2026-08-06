@@ -7090,6 +7090,7 @@ async function solicitarPago(){
           toast('⚠ Solicitud creada · No se pudo notificar a admin','err');
         }
       }
+      await loadServicios();
     }else{
       toast('Error al enviar solicitud de pago','err');
     }
@@ -7244,6 +7245,7 @@ async function saveReporte(){
         fetch('/.netlify/functions/checkout-report-alert',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+CU.access_token},body:JSON.stringify({row_id:rowId,reservation_id:REPORTE_CTX.id})}).catch(err=>console.warn('[Panel] checkout alert failed:',err?.message||err));
       }
       closeModal('m-reporte');
+      await loadServicios();
     }else{toast('Error al guardar reporte — intente nuevamente','err');}
   }finally{
     _svReporteLock=false;
