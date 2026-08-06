@@ -3866,24 +3866,6 @@ async function waStaffRecibo(rowId){
   const fechaPago=cl.fecha_pago
     ?new Date(cl.fecha_pago+'T12:00:00').toLocaleDateString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric'})
     :(cl.pagado_at?new Date(cl.pagado_at).toLocaleDateString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric'}):'—');
-  let signedUrl='';
-  if(cl.comprobante_pago_admin?.path){
-    try{
-      const sr=await fetch(`${SB}/storage/v1/object/sign/evidencias-operaciones/${cl.comprobante_pago_admin.path}`,{
-        method:'POST',
-        headers:{...sbH(),'Content-Type':'application/json'},
-        body:JSON.stringify({expiresIn:604800})
-      });
-      if(!sr.ok)throw new Error('sign error '+sr.status);
-      const sd=await sr.json();
-      let su=sd.signedURL||'';
-      if(su&&!su.startsWith('http'))su=SB+(su.startsWith('/storage/v1')?'':'/storage/v1')+su;
-      signedUrl=su;
-    }catch(e){
-      console.error('[Panel] waStaffRecibo signed URL:',e);
-      toast('Comprobante no disponible · Se enviará recibo sin enlace','err');
-    }
-  }
   let msg='Pago confirmado - Los Colonos\n\n'
     +'Hola '+createdBy+',\n\n'
     +'Se ha registrado el siguiente pago a tu nombre:\n\n'
@@ -3892,8 +3874,7 @@ async function waStaffRecibo(rowId){
     +'Monto pagado: '+montoPagado+'\n'
     +'Pagado por: '+(cl.pagado_por||'Administración');
   if(cl.observacion_pago)msg+='\nObservación: '+cl.observacion_pago;
-  if(signedUrl)msg+='\n\nComprobante bancario:\n'+signedUrl;
-  msg+='\n\nEl respaldo permanente queda registrado en el sistema.\n\nAdministración 506-A Los Colonos';
+  msg+='\n\nComprobante bancario: adjunto.\n\nEl respaldo permanente queda registrado en el sistema.\n\nAdministración 506-A Los Colonos';
   const cleanMsg=msg.replace(/[\u00A0\u202F]/g,' ');
   try{
     await navigator.clipboard.writeText(cleanMsg);
