@@ -3895,16 +3895,13 @@ async function waStaffRecibo(rowId){
   if(signedUrl)msg+='\n\nComprobante bancario:\n'+signedUrl;
   msg+='\n\nEl respaldo permanente queda registrado en el sistema.\n\nAdministración 506-A Los Colonos';
   const cleanMsg=msg.replace(/[\u00A0\u202F]/g,' ');
-  const waUrl='https://wa.me/?text='+encodeURIComponent(cleanMsg);
-  const opened=window.open(waUrl,'_blank');
-  if(!opened){
-    try{
-      await navigator.clipboard.writeText(cleanMsg);
-      toast('WhatsApp bloqueado \u00b7 mensaje copiado al portapapeles','warn');
-    }catch(ce){
-      console.error('[Panel] waStaffRecibo clipboard:',ce);
-      toast('WhatsApp bloqueado \u00b7 copie el recibo manualmente','err');
-    }
+  try{
+    await navigator.clipboard.writeText(cleanMsg);
+    toast('Recibo copiado \u00b7 P\u00e9guelo en WhatsApp','ok');
+  }catch(ce){
+    console.error('[Panel] waStaffRecibo clipboard:',ce);
+    console.warn('[Panel] Recibo WA para copiar manualmente:\n'+cleanMsg);
+    toast('No se pudo copiar el recibo \u00b7 copie manualmente desde consola','err');
   }
 }
 // ══ INFORME OPERATIVO DIARIO ═══════════════════════════════
