@@ -6901,6 +6901,8 @@ async function loadServicios(){
   adjF(0);
   svSetPagoMantMode(false);
   const _pc=document.getElementById('sv-pago-contexto');if(_pc){_pc.textContent='Seleccione un reporte check-out para solicitar pago de operación.';_pc.style.color='';}
+  REPORTE_CTX=null;
+  const _pb=document.getElementById('sv-pago-btn');if(_pb){_pb.disabled=true;_pb.style.opacity='.45';}
   loadOwnerNotes();
 }
 // ── Notas internas del propietario ─────────────────────────────────────
@@ -7006,10 +7008,11 @@ function svSelectRes(idx){
     else{pagoCtxEl.textContent='Seleccione un reporte check-out para solicitar pago de operación.';pagoCtxEl.style.color='';}
   }
   svSetPagoMantMode(false);
+  const _pb=document.getElementById('sv-pago-btn');if(_pb&&REPORTE_CTX?.id){_pb.disabled=false;_pb.style.opacity='';}
 }
 function svSetPagoMantMode(isMaint){
   const av=document.getElementById('sv-pago-mant-aviso');if(av)av.style.display=isMaint?'':'none';
-  const btn=document.getElementById('sv-pago-btn');if(btn){btn.disabled=isMaint;btn.style.opacity=isMaint?'.4':'';}
+  const btn=document.getElementById('sv-pago-btn');if(btn&&isMaint){btn.disabled=true;btn.style.opacity='.4';}
 }
 async function solicitarPago(){
   if(!REPORTE_CTX||!REPORTE_CTX.id){
