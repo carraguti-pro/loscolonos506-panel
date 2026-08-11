@@ -85,6 +85,24 @@ CREATE TABLE inventory_items (
 > **Nota — control de duplicados en el catálogo:**
 > El bloque legacy de Insumos ya mostraba ítems con nombres similares o redundantes. Antes de ejecutar este SQL, se debe decidir si se aplica un `UNIQUE (category, item_name)` para impedir duplicados exactos, o si se permiten variantes y marcas intencionalmente. No hay estrategia de duplicados aprobada aún. Esta decisión debe tomarse antes de la ejecución.
 
+**Borrador recomendado — pendiente de aprobación de Luis:**
+
+```sql
+-- =============================================================
+-- Control de duplicados — inventory_items
+-- PENDIENTE DE APROBACIÓN — no ejecutar sin decisión de Luis.
+-- =============================================================
+
+CREATE UNIQUE INDEX idx_inventory_items_unique_active_category_name
+  ON inventory_items (category, lower(trim(item_name)))
+  WHERE active = true;
+```
+
+- Esto es una recomendación, pendiente de aprobación de Luis antes de ejecutar.
+- Impide ítems activos duplicados en la misma categoría con el mismo nombre normalizado (minúsculas, sin espacios al borde).
+- Variantes intencionales (marcas, presentaciones) deben usar nombres claramente distintos (ej: "Detergente Ariel" vs "Detergente Omo").
+- El índice es parcial (`WHERE active = true`): un ítem desactivado no bloquea la reactivación de uno nuevo con el mismo nombre.
+
 ---
 
 ## 3. Tabla `inventory_requests`
@@ -261,9 +279,13 @@ CREATE POLICY "admin_select_inventory_items"
   USING (get_my_role() = 'admin');
 
 -- Admin: crear ítems
+-- created_by = auth.uid() evita que Admin registre ítems con auditoría de otro usuario.
 CREATE POLICY "admin_insert_inventory_items"
   ON inventory_items FOR INSERT TO authenticated
-  WITH CHECK (get_my_role() = 'admin');
+  WITH CHECK (
+    get_my_role() = 'admin'
+    AND created_by = auth.uid()
+  );
 
 -- Admin: modificar ítems (nombre, categoría, unidad, mínimos, notas, activo)
 CREATE POLICY "admin_update_inventory_items"
@@ -356,6 +378,11 @@ CREATE POLICY "admin_select_inventory_movements"
 > Una alternativa más robusta para fases posteriores: implementar un trigger o función PostgreSQL que actualice `current_stock` automáticamente al insertar en `inventory_movements`. Esta opción no está incluida en el MVP.
 >
 > **Advertencia RLS:** RLS por sí solo no impide que un Admin actualice `inventory_items.current_stock` directamente si existe una política UPDATE activa. Antes de ejecutar este SQL en Supabase, se debe decidir si la integridad de stock se garantiza por disciplina de UI, por un flujo RPC / función de base de datos, o por un trigger. La regla de negocio se mantiene: ningún cambio de stock sin registro en `inventory_movements`.
+>
+> **Decisión de integridad de stock — bloqueante para UI:**
+> Este SQL no debe ejecutarse con fines de conectar una interfaz de usuario hasta que se apruebe una estrategia de RPC/función o trigger.
+> RLS por sí solo no protege `current_stock` de un UPDATE directo por Admin.
+> Las tablas base podrían crearse en una fase futura solo si Luis aprueba explícitamente la ejecución; aun así, la UI Admin no debe conectarse hasta resolver la integridad de stock.
 
 ---
 
@@ -379,7 +406,30 @@ CREATE POLICY "admin_select_inventory_movements"
 
 ---
 
-## 10. Estado final
+## 10. Correcciones requeridas antes de ejecución
+
+Las siguientes correcciones fueron identificadas en la revisión Fase 4 (línea por línea) y clasificadas como IMPORTANT — deben resolverse antes de ejecutar este SQL en Supabase:
+
+1. **Verificar `get_my_role()`.** Confirmar que la función retorna exactamente `'admin'` y `'staff'` (sensible a mayúsculas/minúsculas) para los usuarios del proyecto. Si el valor real difiere, todas las políticas RLS de este borrador fallarían silenciosamente.
+2. **Decidir estrategia de duplicados.** Aprobar o rechazar el índice único `idx_inventory_items_unique_active_category_name` (ver sección 2, borrador recomendado) antes de crear la tabla `inventory_items`.
+3. **Definir mecanismo de integridad de stock antes de conectar UI Admin.** RPC/función con `SECURITY DEFINER`, o trigger `AFTER INSERT` sobre `inventory_movements`. Ver sección 7, nota bloqueante.
+4. **Corregir `admin_insert_inventory_items`.** Ya corregido en este documento (sección 6) para incluir `created_by = auth.uid()` en el `WITH CHECK`, consistente con la política de `inventory_movements`.
+
+---
+
+## 11. Bloqueo antes de ejecutar en Supabase
+
+**No ejecutar este SQL hasta completar lo siguiente:**
+
+- [ ] Confirmar los valores exactos de `get_my_role()` en Supabase (`'admin'`, `'staff'`).
+- [ ] Aprobar o rechazar el índice único de control de duplicados (sección 2).
+- [ ] Decidir RPC vs. trigger para el flujo de movimiento de stock (sección 7).
+- [ ] Confirmar que ninguna interfaz de usuario se conectará todavía tras la creación de las tablas.
+- [ ] Ejecutar únicamente con aprobación explícita de Luis, tabla por tabla, en el orden indicado en la sección 12.
+
+---
+
+## 12. Estado final
 
 **BORRADOR. No ejecutado. No aplicar sin aprobación explícita de Luis.**
 
