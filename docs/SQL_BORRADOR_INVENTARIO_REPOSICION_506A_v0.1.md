@@ -100,8 +100,27 @@ CREATE UNIQUE INDEX idx_inventory_items_unique_active_category_name
 
 - Esto es una recomendación, pendiente de aprobación de Luis antes de ejecutar.
 - Impide ítems activos duplicados en la misma categoría con el mismo nombre normalizado (minúsculas, sin espacios al borde).
-- Variantes intencionales (marcas, presentaciones) deben usar nombres claramente distintos (ej: "Detergente Ariel" vs "Detergente Omo").
+- Diferencias de marca no deben crear ítems de catálogo separados salvo que exista una diferencia operacional real. Ej: ítem base `"Detergente ropa"`; `"Ariel líquido 3 L"` u `"OMO líquido 3 L"` son detalle de compra / nota de movimiento, no ítems de catálogo distintos.
 - El índice es parcial (`WHERE active = true`): un ítem desactivado no bloquea la reactivación de uno nuevo con el mismo nombre.
+
+> **Nota — ítem base vs. marca / presentación:**
+>
+> `item_name` debe representar el ítem operacional base, no la marca ni la presentación comercial. No usar `item_name` para marca o presentación salvo que exista una diferencia operacional real (por ejemplo, dos productos que cumplen funciones distintas). El índice único de control de duplicados solo tiene sentido si `item_name` está normalizado como ítem base — si cada compra con marca distinta se registrara como un ítem nuevo, el catálogo se llenaría de duplicados encubiertos y el índice único dejaría de cumplir su propósito.
+>
+> **Ejemplo — caso real reportado por Luis:**
+> - Ítem de catálogo correcto: `"Papel higiénico"`
+> - Detalle de compra / nota: `"Elite doble hoja 12 rollos"`
+> - Detalle de compra futura / nota: `"Nova 12 rollos"`
+>
+> **Otros ejemplos:**
+> - Ítem base: `"Lavalozas"` — detalle de compra: `"Quix 750 ml"`.
+> - Ítem base: `"Detergente ropa"` — detalle de compra: `"OMO líquido 3 L"`.
+>
+> Este criterio evita dos problemas simultáneamente:
+> 1. Caos de duplicados en el catálogo (un ítem por cada marca comprada).
+> 2. Catálogo demasiado rígido, atado a una sola marca que puede dejar de comprarse.
+>
+> **Advertencia:** esto no requiere agregar campos nuevos en esta fase. El detalle de marca/presentación puede manejarse más adelante en `inventory_purchases`, en las notas de movimiento (`inventory_movements.notes`), o en un futuro modelo de detalle de compra.
 
 ---
 
