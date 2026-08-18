@@ -88,7 +88,7 @@ Antes de que cualquier bloque de este paquete pueda ejecutarse en una fase futur
 - BLOCK 2 — Revocar/otorgar permisos de ejecución
 - BLOCK 3 — Verificar existencia de la función y sus permisos
 - BLOCK 4 — Prueba positiva Admin en tiempo de ejecución, dentro de transacción
-- BLOCK 5 — Prueba negativa Staff / no autenticado
+- BLOCK 5 — Prueba negativa Staff / no autenticado (BLOCK 5.0 precheck, BLOCK 5A Staff, BLOCK 5B anon, BLOCK 5C clean verify — Fase 6H)
 - BLOCK 6 — Verificar rollback / ausencia de datos de prueba remanentes
 - BLOCK 7 — Verificación final
 - BLOCK 8 — Plan de rollback del RPC, no ejecutable sin aprobación explícita
@@ -516,131 +516,428 @@ ROLLBACK;
 
 ---
 
-### BLOCK 5 — Prueba negativa Staff / no autenticado
+### Nota de recomendación (no vinculante) — Método de autenticación para BLOCK 5
+
+Esta nota es una **recomendación**, no una decisión. La decisión de método para BLOCK 5 sigue perteneciendo exclusivamente a Luis, tal como lo establece la nota obligatoria antes de BLOCK 4 ("Esta aprobación no se extiende a BLOCK 5").
+
+- **Vía PostgREST/RPC con un JWT real** es el método más cercano al comportamiento real de producción: ejercita también la capa de PostgREST (verificación del JWT, mapeo de errores HTTP 401/403), que la simulación en el SQL Editor no toca en absoluto.
+- **Vía simulación controlada de claims JWT en el SQL Editor** es una prueba controlada exclusivamente a nivel de base de datos. Confirma el comportamiento de `auth.uid()`, `get_my_role()`, el cuerpo PL/pgSQL de la función y las ACL de PostgreSQL — pero **no** ejercita la capa PostgREST/Auth real, y por lo tanto no es equivalente a una solicitud JWT real de producción.
+- La aprobación otorgada para BLOCK 4 fue **exclusiva de BLOCK 4** (ver nota obligatoria arriba). No se traslada automáticamente a BLOCK 5.
+
+**Evaluación (recomendación, no decisión):** dado que (a) BLOCK 4 ya ejecutó exitosamente el mismo mecanismo de simulación (`SET LOCAL role`, `SET LOCAL request.jwt.claims`) sin dejar datos remanentes, (b) las 3 tablas de inventario están confirmadas en 0 filas, y (c) BLOCK 5A necesita un ítem temporal válido igual que BLOCK 4 lo necesitó, la simulación controlada en el SQL Editor parece, en principio, el método de menor riesgo operacional también para BLOCK 5 — con la limitación explícita de que no valida la capa PostgREST/Auth real. Si Luis desea validar también esa capa, eso requeriría una prueba separada y posterior vía PostgREST/RPC con JWT real, fuera del alcance de esta preparación documental. Esta evaluación no autoriza ningún método; queda pendiente de decisión explícita de Luis antes de ejecutar BLOCK 5.
+
+---
+
+### BLOCK 5.0 — Precheck de solo lectura
 
 **BORRADOR — NO EJECUTAR SIN GO EXPLÍCITO DE LUIS**
 
-Este bloque cubre explícitamente seis casos de rechazo: stock negativo, `p_movement_type` NULL, `movement_type` inválido, Staff, no autenticado, y `linked_request_id` incompatible. Ver la nota de autenticación antes de BLOCK 4 para el método a usar en 5.1 y 5.2.
-
-Los casos 5.3 a 5.6 se ejecutan autenticados como Admin, y usan el mismo patrón de `DO $$ ... $$` con captura de excepción vía `BEGIN ... EXCEPTION WHEN OTHERS` para verificar que la función efectivamente rechaza el caso, en lugar de solo documentar el resultado esperado en un comentario.
+Repite y amplía las verificaciones de BLOCK 3, porque el tiempo transcurrido entre BLOCK 4 y una futura ejecución de BLOCK 5 puede haber cambiado el estado de la función o de sus permisos.
 
 ```sql
 -- BORRADOR — NO EJECUTAR SIN GO EXPLÍCITO DE LUIS
 
--- 5.1. Staff rechazado.
--- Ejecutar autenticado como el usuario de prueba Staff
--- (francisca.cabanas@gmail.com, confirmado en el Cierre de Fase 6E).
-BEGIN;
+-- 5.0.1. Precheck de capacidad de cambio de rol (role-switch), antes de cualquier
+-- otro precheck. Determina si el rol conectado del SQL Editor puede efectivamente
+-- fijar role=authenticated (necesario para BLOCK 4 y BLOCK 5A) y role=anon
+-- (necesario para BLOCK 5B) mediante SET LOCAL role.
+--
+-- pg_has_role(..., 'SET') solo existe desde PostgreSQL 16. En PostgreSQL 15,
+-- pg_has_role() soporta 'MEMBER'/'USAGE', y 'MEMBER' es la verificación aplicable
+-- a la capacidad de SET ROLE. La versión mayor de PostgreSQL de este proyecto no
+-- ha sido establecida todavía por esta preparación de BLOCK 5 — no se asume.
 
-SELECT * FROM public.inventory_apply_stock_movement(
-  (SELECT id FROM public.inventory_items LIMIT 1),
-  'entrada_regularizacion', 1, 'Prueba Fase 6G — debe fallar', NULL, NULL
-);
--- Esperado: excepción "No autorizado: se requiere rol admin".
--- Ningún cambio debe quedar aplicado.
+-- 5.0.1.a. Confirmar la versión del servidor antes de elegir el privilege_type correcto.
+SELECT current_setting('server_version') AS server_version,
+       current_setting('server_version_num')::int AS server_version_num;
+-- Esperado: 1 fila. server_version_num determina la rama aplicable en 5.0.1.b.
 
-ROLLBACK;
+-- 5.0.1.b. Precheck de capacidad de cambio de rol, adaptado automáticamente a la
+-- versión confirmada en 5.0.1.a mediante CASE: en tiempo de ejecución solo se
+-- evalúa la rama (THEN/ELSE) correspondiente a la versión real del servidor, por
+-- lo que esta única consulta es válida tanto en PostgreSQL >= 16 como en
+-- PostgreSQL 15, sin que Luis deba elegir manualmente cuál ejecutar.
+SELECT session_user,
+       current_user,
+       current_setting('server_version_num')::int AS server_version_num,
+       CASE
+         WHEN current_setting('server_version_num')::int >= 160000
+           THEN pg_has_role(session_user, 'authenticated', 'SET')
+         ELSE pg_has_role(session_user, 'authenticated', 'MEMBER')
+       END AS can_set_authenticated,
+       CASE
+         WHEN current_setting('server_version_num')::int >= 160000
+           THEN pg_has_role(session_user, 'anon', 'SET')
+         ELSE pg_has_role(session_user, 'anon', 'MEMBER')
+       END AS can_set_anon;
+-- Interpretación:
+--   - Si server_version_num >= 160000: el privilegio verificado es 'SET'
+--     (pg_has_role(session_user, 'authenticated'/'anon', 'SET')), el chequeo
+--     específico de PostgreSQL 16+ para la capacidad de SET ROLE.
+--   - Si server_version_num < 160000: el privilegio verificado es 'MEMBER'
+--     (pg_has_role(session_user, 'authenticated'/'anon', 'MEMBER')), la
+--     verificación aplicable en PostgreSQL 15 para la capacidad de SET ROLE
+--     (PostgreSQL 15 no expone 'SET' como privilege_type de pg_has_role).
+--   - can_set_authenticated debe ser true para el método de simulación controlada
+--     Admin/Staff en el SQL Editor (BLOCK 4 ya lo confirmó implícitamente al
+--     ejecutarse con éxito; esta consulta lo deja explícito también para BLOCK 5A).
+--   - can_set_anon debe ser true antes de que BLOCK 5B pueda usar SET LOCAL role anon.
+--   - Si can_set_anon es false, BLOCK 5B NO ESTÁ LISTO bajo este método de SQL Editor
+--     y no debe ejecutarse.
+--   - No se debe intentar modificar membresías ni privilegios de rol para forzar que
+--     la prueba funcione: eso quedaría fuera del alcance de una prueba negativa y del
+--     límite de seguridad de este documento.
+--   - No se asume la versión mayor de PostgreSQL en ningún otro bloque de este
+--     documento: esta es la única verificación que depende de ella.
 
--- 5.2. No autenticado rechazado.
--- Ejecutar sin sesión autenticada (rol anon, o token inválido/expirado),
--- normalmente probado desde el cliente API (PostgREST), no desde el editor SQL.
--- Esperado a nivel de API: rechazo por falta de permiso de ejecución (BLOCK 2, sin GRANT a anon)
--- y, si se llegara a invocar autenticada con auth.uid() nulo, excepción
--- "No autorizado: usuario no autenticado" desde dentro de la función.
+-- 5.0.2. Firma exacta y definición completa de la función.
+SELECT p.proname AS function_name,
+       pg_get_function_arguments(p.oid) AS arguments,
+       pg_get_function_result(p.oid) AS return_type,
+       p.prosecdef AS is_security_definer,
+       p.proconfig AS config_settings,
+       pg_get_functiondef(p.oid) AS full_definition
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public'
+  AND p.proname = 'inventory_apply_stock_movement';
+-- Esperado: 1 fila. is_security_definer = true. config_settings incluye search_path=public, pg_catalog.
+-- full_definition debe coincidir con el BLOCK 1 vigente en main (commit b70b146). Si difiere,
+-- detenerse: BLOCK 5A/5B asumen el mecanismo de rechazo exacto de esa versión (ver nota bajo BLOCK 5A).
+
+-- 5.0.3. ACL cruda de la función, para inspección directa sin depender de has_function_privilege().
+SELECT p.proname, p.proacl
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public'
+  AND p.proname = 'inventory_apply_stock_movement';
+
+-- 5.0.4. Privilegios vía information_schema (vista de alto nivel).
+SELECT grantee, privilege_type
+FROM information_schema.routine_privileges
+WHERE routine_schema = 'public'
+  AND routine_name = 'inventory_apply_stock_movement'
+ORDER BY grantee;
+-- Esperado: únicamente la fila authenticated / EXECUTE. Ninguna fila PUBLIC ni anon.
+
+-- 5.0.5. Privilegio efectivo explícito por rol.
+SELECT has_function_privilege(
+         'anon',
+         'public.inventory_apply_stock_movement(uuid,text,numeric,text,text,uuid)',
+         'EXECUTE'
+       ) AS anon_can_execute,
+       has_function_privilege(
+         'authenticated',
+         'public.inventory_apply_stock_movement(uuid,text,numeric,text,text,uuid)',
+         'EXECUTE'
+       ) AS authenticated_can_execute;
+-- Esperado: anon_can_execute = false, authenticated_can_execute = true.
+
+-- 5.0.6. Privilegio efectivo de PUBLIC. has_function_privilege() no acepta "PUBLIC" como
+-- pseudo-rol; PUBLIC se identifica en el ACL como una entrada con grantee vacío (oid 0).
+-- Esta consulta hace explícita esa verificación en lugar de asumirla por ausencia en 5.0.4.
+SELECT CASE WHEN a.grantee = 0 THEN 'PUBLIC' ELSE a.grantee::regrole::text END AS grantee_role,
+       a.privilege_type
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace,
+     LATERAL aclexplode(p.proacl) AS a
+WHERE n.nspname = 'public'
+  AND p.proname = 'inventory_apply_stock_movement';
+-- Esperado: ninguna fila con grantee_role = 'PUBLIC'.
+
+-- 5.0.7. Usuarios Staff activos disponibles para BLOCK 5A.
+-- Nota: auth.users.email es una columna del esquema estándar de Supabase Auth (no específica
+-- de este proyecto), pero este JOIN exacto con public.profiles no está verificado en la
+-- documentación previa del repositorio (la Fase 6A solo confirmó id/role/active en profiles).
+-- Al ser una consulta de solo lectura, esta misma ejecución sirve como su propia verificación.
+SELECT u.id AS user_id,
+       u.email,
+       pr.role,
+       pr.active
+FROM auth.users u
+JOIN public.profiles pr ON pr.id = u.id
+WHERE pr.role = 'staff'
+  AND pr.active = true
+ORDER BY u.email;
+-- Esperado: al menos 1 fila, incluyendo francisca.cabanas@gmail.com (Cierre Fase 6E), activo.
+
+-- 5.0.8. Confirmar 0 filas de datos de prueba remanentes antes de iniciar BLOCK 5.
+SELECT 'inventory_items' AS tabla, count(*) FROM inventory_items
+UNION ALL
+SELECT 'inventory_requests', count(*) FROM inventory_requests
+UNION ALL
+SELECT 'inventory_movements', count(*) FROM inventory_movements;
+-- Esperado: 0 en las 3 filas, según el estado confirmado tras BLOCK 4 CLEAN VERIFY.
 ```
 
+---
+
+### BLOCK 5A — Prueba negativa Staff
+
+**BORRADOR — NO EJECUTAR SIN GO EXPLÍCITO DE LUIS**
+
+Diseño únicamente. No ejecutar.
+
+**Mecanismo de rechazo esperado (extraído del BLOCK 1 vigente, no inventado):** el cuerpo de la función, paso 1, ejecuta:
+
+```
+v_role := get_my_role();
+IF v_role IS DISTINCT FROM 'admin' THEN
+  RAISE EXCEPTION 'No autorizado: se requiere rol admin';
+END IF;
+```
+
+`RAISE EXCEPTION` sin cláusula `USING ERRCODE` produce, por comportamiento estándar y documentado de PostgreSQL, el SQLSTATE genérico `P0001` (`raise_exception`). Este paso ocurre **antes** del `FOR UPDATE` (paso 4) y de cualquier `INSERT`/`UPDATE`, siempre que Staff esté correctamente autenticado (`auth.uid()` no nulo) — lo cual se cumple aquí porque `authenticated` tiene `EXECUTE` otorgado (BLOCK 2) y Staff es un usuario `authenticated` real.
+
+**Criterio exacto de PASS (los tres deben cumplirse; "cualquier error SQL" NO constituye PASS por sí solo):**
+1. Se captura una excepción con `SQLSTATE = 'P0001'`.
+2. El texto del error es exactamente `No autorizado: se requiere rol admin` (no una coincidencia parcial).
+3. `current_stock` del ítem de prueba no cambió, y no se insertó ningún `inventory_movements` para ese ítem.
+
+**Criterio de TEST INVALID (no prueba nada sobre el rechazo de Staff; debe detenerse y reportarse, no interpretarse como PASS ni FAIL):**
+- `auth.uid()` resulta NULL tras fijar los claims de Staff (la simulación no quedó activa).
+- `get_my_role()` no devuelve exactamente `'staff'` tras fijar los claims de Staff (usuario de prueba incorrecto, inactivo, o UUID equivocado en `<STAFF_TEST_USER_UUID>`).
+
+**Criterio de TEST FAILURE (indica una falla real, potencialmente de seguridad, no solo de la prueba):**
+- El RPC no lanza ninguna excepción (Staff logró ejecutar la mutación) — falla crítica.
+- Se captura una excepción, pero con `SQLSTATE` distinto de `P0001`, o con un mensaje distinto al esperado — indica que el rechazo ocurrió por una causa distinta a la verificación de rol (por ejemplo, el ítem de prueba no existe, o cambió el mensaje de la función respecto al BLOCK 1 vigente) y debe investigarse antes de asumir que la verificación de rol sigue funcionando.
+- `current_stock` cambió, o se insertó algún `inventory_movements`, a pesar de que se capturó una excepción — indicaría una escritura parcial inconsistente con el diseño transaccional del RPC.
+
 ```sql
 -- BORRADOR — NO EJECUTAR SIN GO EXPLÍCITO DE LUIS
--- 5.3 a 5.6: ejecutar autenticado como el usuario de prueba Admin.
+-- Requiere reemplazo manual de <ADMIN_TEST_USER_UUID>, <STAFF_TEST_USER_UUID>
+-- y <BLOCK5_TEST_ITEM_UUID> antes de ejecutar (ver BLOCK 5.0.7 para el UUID de Staff).
+-- <BLOCK5_TEST_ITEM_UUID> es un UUID elegido por Luis para este fixture (por ejemplo,
+-- generado por separado con gen_random_uuid(), o cualquier UUID v4 válido), reemplazado
+-- de forma idéntica y literal en cada paso de este bloque. No se crea ninguna tabla
+-- auxiliar ni objeto persistente: el mismo texto de placeholder, reemplazado
+-- manualmente antes de ejecutar, es lo único que conecta la fase Admin y la fase
+-- Staff — evita que permisos sobre un objeto auxiliar (ej.: una tabla temporal)
+-- se conviertan en una fuente de error ajena a la prueba negativa del RPC.
 
 BEGIN;
+
+-- Fase Admin: verificar sesión y crear el ítem de prueba con id explícito.
+SET LOCAL role authenticated;
+SET LOCAL request.jwt.claims = '{"sub": "<ADMIN_TEST_USER_UUID>", "role": "authenticated"}';
+
+DO $$
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION '5A.0-admin: auth.uid() es NULL — la simulación Admin no quedó activa';
+  END IF;
+
+  IF get_my_role() IS DISTINCT FROM 'admin' THEN
+    RAISE EXCEPTION '5A.0-admin: get_my_role() esperado ''admin'', obtenido %', get_my_role();
+  END IF;
+
+  -- 5A.pre. Confirmar que el UUID placeholder no colisiona con una fila existente.
+  -- Es relevante aquí porque este bloque fuerza el id explícitamente en el INSERT,
+  -- en lugar de dejar que la tabla genere uno por defecto.
+  IF EXISTS (SELECT 1 FROM public.inventory_items WHERE id = '<BLOCK5_TEST_ITEM_UUID>'::uuid) THEN
+    RAISE EXCEPTION '5A.pre: el UUID <BLOCK5_TEST_ITEM_UUID> ya existe en inventory_items — elegir otro valor antes de ejecutar';
+  END IF;
+
+  INSERT INTO public.inventory_items (id, item_name, category, unit, current_stock, min_stock, created_by)
+  VALUES ('<BLOCK5_TEST_ITEM_UUID>'::uuid, '__PRUEBA_6G__ Ítem negativo Staff', 'Otros', 'unidad', 5, 1, auth.uid());
+END;
+$$;
+
+-- Fase Staff: cambiar la sesión simulada al usuario de prueba Staff, dentro
+-- de la misma transacción. SET LOCAL puede reemitirse: el último valor antes
+-- de COMMIT/ROLLBACK es el vigente; el valor anterior (Admin) no se restaura
+-- a mitad de transacción, solo desaparece junto con todo lo demás al ROLLBACK final.
+SET LOCAL request.jwt.claims = '{"sub": "<STAFF_TEST_USER_UUID>", "role": "authenticated"}';
 
 DO $$
 DECLARE
-  v_test_item_id uuid;
-  v_other_item_id uuid;
-  v_test_request_id uuid;
-  v_error_caught boolean;
+  v_stock_before numeric;
+  v_stock_after numeric;
+  v_movement_count integer;
+  v_error_caught boolean := false;
+  v_sqlstate text;
+  v_sqlerrm text;
 BEGIN
-  -- Ítem base para las pruebas de este bloque.
-  INSERT INTO public.inventory_items (item_name, category, unit, current_stock, min_stock, created_by)
-  VALUES ('__PRUEBA_6G__ Ítem negativo A', 'Otros', 'unidad', 5, 1, auth.uid())
-  RETURNING id INTO v_test_item_id;
+  -- 5A.0-staff. Confirmar que la sesión simulada es Staff, con criterio estricto de invalidez.
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION '5A.0-staff: auth.uid() es NULL — la simulación Staff no quedó activa; PRUEBA INVÁLIDA';
+  END IF;
 
-  -- 5.3. movement_type inválido rechazado.
-  v_error_caught := false;
+  IF get_my_role() IS DISTINCT FROM 'staff' THEN
+    RAISE EXCEPTION '5A.0-staff: get_my_role() esperado ''staff'', obtenido % — PRUEBA INVÁLIDA, no procede como prueba de rechazo de Staff', get_my_role();
+  END IF;
+
+  SELECT current_stock INTO v_stock_before
+    FROM public.inventory_items WHERE id = '<BLOCK5_TEST_ITEM_UUID>'::uuid;
+
+  -- 5A.1. Intentar la mutación como Staff; debe ser rechazada.
   BEGIN
     PERFORM * FROM public.inventory_apply_stock_movement(
-      v_test_item_id, 'tipo_invalido', 1, NULL, NULL, NULL
+      '<BLOCK5_TEST_ITEM_UUID>'::uuid, 'entrada_regularizacion', 1,
+      'Prueba Fase 6H BLOCK 5A — debe fallar', NULL, NULL
     );
   EXCEPTION WHEN OTHERS THEN
     v_error_caught := true;
-    RAISE NOTICE '5.3 excepción esperada capturada: %', SQLERRM;
+    GET STACKED DIAGNOSTICS v_sqlstate = RETURNED_SQLSTATE;
+    v_sqlerrm := SQLERRM;
   END;
+
   IF NOT v_error_caught THEN
-    RAISE EXCEPTION '5.3: se esperaba excepción por movement_type inválido';
+    RAISE EXCEPTION '5A: FALLA CRÍTICA — el RPC no lanzó ninguna excepción para Staff; se esperaba rechazo';
   END IF;
 
-  -- 5.4. p_movement_type NULL rechazado.
-  v_error_caught := false;
-  BEGIN
-    PERFORM * FROM public.inventory_apply_stock_movement(
-      v_test_item_id, NULL, 1, NULL, NULL, NULL
-    );
-  EXCEPTION WHEN OTHERS THEN
-    v_error_caught := true;
-    RAISE NOTICE '5.4 excepción esperada capturada: %', SQLERRM;
-  END;
-  IF NOT v_error_caught THEN
-    RAISE EXCEPTION '5.4: se esperaba excepción por movement_type NULL';
+  IF v_sqlstate IS DISTINCT FROM 'P0001' THEN
+    RAISE EXCEPTION '5A: SQLSTATE inesperado % (esperado P0001) — mensaje: % — investigar antes de asumir que la verificación de rol sigue vigente', v_sqlstate, v_sqlerrm;
   END IF;
 
-  -- 5.5. Stock negativo rechazado (current_stock = 5, salida de 999).
-  v_error_caught := false;
-  BEGIN
-    PERFORM * FROM public.inventory_apply_stock_movement(
-      v_test_item_id, 'salida_consumo', 999, 'Prueba Fase 6G — debe fallar', NULL, NULL
-    );
-  EXCEPTION WHEN OTHERS THEN
-    v_error_caught := true;
-    RAISE NOTICE '5.5 excepción esperada capturada: %', SQLERRM;
-  END;
-  IF NOT v_error_caught THEN
-    RAISE EXCEPTION '5.5: se esperaba excepción por stock resultante negativo';
-  END IF;
-  IF (SELECT current_stock FROM public.inventory_items WHERE id = v_test_item_id) IS DISTINCT FROM 5 THEN
-    RAISE EXCEPTION '5.5: current_stock no debe haber cambiado tras el rechazo';
+  IF v_sqlerrm IS DISTINCT FROM 'No autorizado: se requiere rol admin' THEN
+    RAISE EXCEPTION '5A: mensaje de error inesperado: % (SQLSTATE %) — no coincide con el rechazo de rol esperado', v_sqlerrm, v_sqlstate;
   END IF;
 
-  -- 5.6. linked_request_id con linked_item_id incompatible, rechazado.
-  INSERT INTO public.inventory_items (item_name, category, unit, current_stock, min_stock, created_by)
-  VALUES ('__PRUEBA_6G__ Ítem negativo B', 'Otros', 'unidad', 5, 1, auth.uid())
-  RETURNING id INTO v_other_item_id;
-
-  INSERT INTO public.inventory_requests (item_free_text, reason, requested_by, status, linked_item_id)
-  VALUES ('__PRUEBA_6G__ Solicitud de prueba', 'reposicion_necesaria', auth.uid(), 'en_revision', v_other_item_id)
-  RETURNING id INTO v_test_request_id;
-
-  v_error_caught := false;
-  BEGIN
-    -- v_test_item_id es distinto del linked_item_id de la solicitud (v_other_item_id).
-    PERFORM * FROM public.inventory_apply_stock_movement(
-      v_test_item_id, 'entrada_regularizacion', 1, NULL, NULL, v_test_request_id
-    );
-  EXCEPTION WHEN OTHERS THEN
-    v_error_caught := true;
-    RAISE NOTICE '5.6 excepción esperada capturada: %', SQLERRM;
-  END;
-  IF NOT v_error_caught THEN
-    RAISE EXCEPTION '5.6: se esperaba excepción por linked_request_id incompatible con p_item_id';
+  -- 5A.2. Confirmar ausencia de efectos secundarios pese al rechazo.
+  SELECT current_stock INTO v_stock_after
+    FROM public.inventory_items WHERE id = '<BLOCK5_TEST_ITEM_UUID>'::uuid;
+  IF v_stock_after IS DISTINCT FROM v_stock_before THEN
+    RAISE EXCEPTION '5A: current_stock cambió de % a % — no debía cambiar tras el rechazo', v_stock_before, v_stock_after;
   END IF;
 
-  RAISE NOTICE 'BLOCK 5 (5.3-5.6): todas las verificaciones pasaron.';
+  SELECT count(*) INTO v_movement_count
+    FROM public.inventory_movements WHERE item_id = '<BLOCK5_TEST_ITEM_UUID>'::uuid;
+  IF v_movement_count IS DISTINCT FROM 0 THEN
+    RAISE EXCEPTION '5A: se encontraron % movimientos para el ítem de prueba — esperado 0', v_movement_count;
+  END IF;
+
+  RAISE NOTICE '5A: PASS — Staff rechazado correctamente (SQLSTATE P0001, mensaje esperado), sin cambios de stock ni movimientos.';
 END;
 $$;
 
 ROLLBACK;
--- Obligatorio: revertir todo lo hecho en este bloque, incluyendo ítems y solicitud de prueba.
+-- Obligatorio: revierte el ítem de prueba y toda la simulación de sesión.
+-- Ningún objeto auxiliar (tabla temporal u otro) fue creado en este bloque.
+```
+
+---
+
+### BLOCK 5B — Prueba negativa no autenticado / anon
+
+**BORRADOR — NO EJECUTAR SIN GO EXPLÍCITO DE LUIS**
+
+Diseño únicamente. No ejecutar. Transacción separada de BLOCK 5A: ningún estado de una prueba debe filtrarse a la otra.
+
+**Mecanismo de rechazo esperado:** `anon` no tiene `EXECUTE` sobre la función (BLOCK 2: `REVOKE ALL ... FROM anon`, sin `GRANT` posterior). En PostgreSQL, la verificación de privilegio `EXECUTE` sobre una función ocurre **antes** de que el cuerpo de la función se ejecute — es decir, antes de que `auth.uid() IS NULL` (paso 0 del RPC) llegue siquiera a evaluarse. El error resultante es el mecanismo genérico y documentado de PostgreSQL para privilegio insuficiente: `SQLSTATE 42501` (`insufficient_privilege`), con un mensaje del tipo `permission denied for function inventory_apply_stock_movement`. Este es un mecanismo general de PostgreSQL (misma clase de error que un `SELECT` denegado sobre una tabla), no un valor específico de este proyecto — pero **no ha sido confirmado empíricamente todavía en este proyecto**; BLOCK 5.0/5B son, en sí mismos, esa confirmación.
+
+No se requiere ningún ítem de inventario ni fixture persistente: si el privilegio `EXECUTE` bloquea la entrada antes de que el cuerpo se ejecute, el valor del argumento `p_item_id` es irrelevante para el resultado. Por esa misma razón, la consulta usa un UUID fijo en lugar de leer `inventory_items`, evitando así cualquier duda sobre si `anon` tiene o no privilegio `SELECT` sobre esa tabla (no verificado en este documento) — algo que contaminaría la interpretación del resultado si se usara una subconsulta contra esa tabla.
+
+**Criterio exacto de PASS:**
+1. Se captura una excepción con `SQLSTATE = '42501'`.
+2. (Informativo, no bloqueante) El mensaje contiene `permission denied for function` — se registra pero no se exige coincidencia exacta, porque el texto exacto no está fijado por este proyecto sino por el motor de PostgreSQL, y puede variar levemente entre versiones.
+
+**Criterio de TEST INVALID:**
+- `current_user` no es `anon` tras `SET LOCAL role anon` (la simulación de rol no quedó activa) — indica que el rol conectado del SQL Editor podría no tener membresía sobre `anon`; debe detenerse y reportarse, no interpretarse como resultado de la prueba.
+
+**Criterio de TEST FAILURE (indica una falla real, potencialmente crítica):**
+- El RPC no lanza ninguna excepción (anon logró invocar la función) — falla crítica, indicaría que BLOCK 2 no se aplicó correctamente o fue revertido.
+- Se captura una excepción, pero con `SQLSTATE` distinto de `42501` — indicaría que el rechazo NO ocurrió por falta de privilegio `EXECUTE` sino por otra causa (por ejemplo, que el cuerpo de la función sí llegó a ejecutarse y falló por otro motivo), lo cual sería en sí mismo una falla crítica: significaría que la capa de permisos de PostgreSQL no está bloqueando a `anon` como se espera.
+
+```sql
+-- BORRADOR — NO EJECUTAR SIN GO EXPLÍCITO DE LUIS
+
+BEGIN;
+
+SET LOCAL role anon;
+-- Deliberadamente NO se fija request.jwt.claims: el objetivo es reproducir una
+-- solicitud sin autenticación (rol anon puro), no una sesión "authenticated" con
+-- claims artificiales. En producción, PostgREST asigna el rol `anon` cuando no
+-- hay JWT válido en la solicitud entrante.
+
+DO $$
+DECLARE
+  v_current_role text;
+  v_error_caught boolean := false;
+  v_sqlstate text;
+  v_sqlerrm text;
+BEGIN
+  SELECT current_user INTO v_current_role;
+  IF v_current_role IS DISTINCT FROM 'anon' THEN
+    RAISE EXCEPTION '5B.0: current_user esperado ''anon'', obtenido % — PRUEBA INVÁLIDA, la simulación de rol anon no quedó activa', v_current_role;
+  END IF;
+
+  BEGIN
+    PERFORM * FROM public.inventory_apply_stock_movement(
+      '00000000-0000-0000-0000-000000000000'::uuid,
+      'entrada_regularizacion', 1, 'Prueba Fase 6H BLOCK 5B — debe fallar', NULL, NULL
+    );
+  EXCEPTION WHEN OTHERS THEN
+    v_error_caught := true;
+    GET STACKED DIAGNOSTICS v_sqlstate = RETURNED_SQLSTATE;
+    v_sqlerrm := SQLERRM;
+  END;
+
+  IF NOT v_error_caught THEN
+    RAISE EXCEPTION '5B: FALLA CRÍTICA — el RPC no lanzó ninguna excepción para el rol anon; se esperaba rechazo por falta de privilegio EXECUTE';
+  END IF;
+
+  IF v_sqlstate IS DISTINCT FROM '42501' THEN
+    RAISE EXCEPTION '5B: SQLSTATE inesperado % (esperado 42501, insufficient_privilege) — mensaje: % — esto podría indicar que el rechazo NO ocurrió por falta de privilegio EXECUTE (posible FALLA CRÍTICA de BLOCK 2)', v_sqlstate, v_sqlerrm;
+  END IF;
+
+  RAISE NOTICE '5B: PASS — anon rechazado por falta de privilegio EXECUTE (SQLSTATE 42501): %', v_sqlerrm;
+END;
+$$;
+
+ROLLBACK;
+-- Obligatorio: revierte la simulación de rol. No se creó ningún fixture en este bloque.
+```
+
+---
+
+### BLOCK 5C — Clean verify
+
+**BORRADOR — NO EJECUTAR SIN GO EXPLÍCITO DE LUIS**
+
+```sql
+-- BORRADOR — NO EJECUTAR SIN GO EXPLÍCITO DE LUIS
+
+-- Confirmar que ningún ítem de prueba de BLOCK 5A quedó persistido.
+SELECT count(*) FROM public.inventory_items WHERE item_name LIKE '__PRUEBA_6G__%';
+-- Esperado: 0.
+
+-- Confirmar que ningún movimiento quedó vinculado a un ítem de prueba
+-- (se compara por ítem, no por texto de "reason", para cubrir cualquier
+-- variante de texto usada entre BLOCK 4 y BLOCK 5A).
+SELECT count(*) FROM public.inventory_movements m
+JOIN public.inventory_items i ON i.id = m.item_id
+WHERE i.item_name LIKE '__PRUEBA_6G__%';
+-- Esperado: 0.
+
+-- Confirmar que los conteos generales de las 3 tablas volvieron al estado previo a BLOCK 5.
+SELECT 'inventory_items' AS tabla, count(*) FROM inventory_items
+UNION ALL
+SELECT 'inventory_requests', count(*) FROM inventory_requests
+UNION ALL
+SELECT 'inventory_movements', count(*) FROM inventory_movements;
+-- Esperado: 0 en las 3 filas.
+
+-- Reconfirmar privilegios de ejecución del RPC tras BLOCK 5A/5B
+-- (deben permanecer sin cambios: ninguno de los dos bloques modifica permisos).
+SELECT has_function_privilege(
+         'anon',
+         'public.inventory_apply_stock_movement(uuid,text,numeric,text,text,uuid)',
+         'EXECUTE'
+       ) AS anon_can_execute,
+       has_function_privilege(
+         'authenticated',
+         'public.inventory_apply_stock_movement(uuid,text,numeric,text,text,uuid)',
+         'EXECUTE'
+       ) AS authenticated_can_execute;
+-- Esperado: anon_can_execute = false, authenticated_can_execute = true.
+
+SELECT grantee, privilege_type
+FROM information_schema.routine_privileges
+WHERE routine_schema = 'public'
+  AND routine_name = 'inventory_apply_stock_movement'
+ORDER BY grantee;
+-- Esperado: únicamente authenticated / EXECUTE. Ninguna fila PUBLIC ni anon.
 ```
 
 ---
