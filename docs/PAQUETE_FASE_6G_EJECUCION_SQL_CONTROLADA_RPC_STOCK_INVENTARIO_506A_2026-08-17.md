@@ -242,7 +242,7 @@ BEGIN
     RAISE EXCEPTION 'Ítem no encontrado: %', p_item_id;
   END IF;
 
-  IF NOT v_active THEN
+  IF v_active IS DISTINCT FROM true THEN
     RAISE EXCEPTION 'Ítem inactivo: %', p_item_id;
   END IF;
 
