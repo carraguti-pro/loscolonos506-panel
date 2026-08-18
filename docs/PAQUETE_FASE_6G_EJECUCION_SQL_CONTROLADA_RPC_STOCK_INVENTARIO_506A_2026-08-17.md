@@ -404,30 +404,55 @@ Si Luis opta por el método PostgREST/RPC con JWT real, los bloques `DO` de BLOC
 
 Ningún bloque de prueba de esta sección debe ejecutarse asumiendo que `auth.uid()` está poblado por defecto. Esta decisión de método queda pendiente de aprobación de Luis (ver también sección 9, checklist final).
 
+**Decisión aprobada para BLOCK 4 (exclusivamente):** Luis aprueba explícitamente el método de simulación controlada de claims JWT en el SQL Editor **únicamente para la ejecución de BLOCK 4**. Este método **no refleja el comportamiento real de producción** — en producción, `auth.uid()` se resuelve desde un JWT real emitido por Supabase Auth y recibido vía PostgREST. Esta simulación es exclusivamente una prueba controlada a nivel de base de datos, ejecutada directamente en el SQL Editor, con `auth.uid()` fijado artificialmente mediante `request.jwt.claims` dentro de la misma transacción que BLOCK 4 revierte con `ROLLBACK`. **Esta aprobación no se extiende a BLOCK 5**; el método de autenticación para BLOCK 5 permanece pendiente de decisión separada de Luis.
+
 ---
 
 ### BLOCK 4 — Prueba positiva Admin en tiempo de ejecución, dentro de transacción
 
 **BORRADOR — NO EJECUTAR SIN GO EXPLÍCITO DE LUIS**
 
-Esta prueba debe ejecutarse autenticado como el usuario de prueba Admin (`reservas@ferranpropiedades.cl`, confirmado en el Cierre de Fase 6E), usando uno de los dos métodos de autenticación descritos en la nota anterior, y **siempre dentro de una transacción que termina en `ROLLBACK`**, para no dejar ningún dato de prueba permanente.
+Esta prueba debe ejecutarse autenticado como el usuario de prueba Admin (`reservas@ferranpropiedades.cl`, confirmado en el Cierre de Fase 6E), usando el método de simulación controlada de claims JWT en el SQL Editor aprobado exclusivamente para este bloque (ver nota de autenticación arriba), y **siempre dentro de una transacción que termina en `ROLLBACK`**, para no dejar ningún dato de prueba permanente.
 
 El bloque se escribe como un `DO $$ ... $$` autocontenido con una variable local (`v_test_item_id`), en lugar de una variable de sustitución de cliente SQL (tipo `:test_item_id`), para que sea ejecutable literalmente tal como está escrito, sin depender de que el cliente (psql, Supabase SQL Editor, etc.) soporte variables de sesión.
 
+La simulación de sesión (`SET LOCAL role authenticated; SET LOCAL request.jwt.claims = ...`) requiere el UUID real del usuario de prueba Admin. El repositorio no documenta una columna `email` verificada en `public.profiles` (solo se confirmó `id`, `role`, `active` en la Fase 6A) ni una consulta ya validada que resuelva el UUID desde `reservas@ferranpropiedades.cl`, por lo que este documento no inventa esa resolución automática. El SQL de abajo usa el placeholder explícito `<ADMIN_TEST_USER_UUID>`, que Luis debe reemplazar manualmente por el UUID real antes de ejecutar, obtenido por sus propios medios (por ejemplo, desde el panel de Supabase Auth).
+
 ```sql
 -- BORRADOR — NO EJECUTAR SIN GO EXPLÍCITO DE LUIS
--- Ejecutar autenticado como el usuario de prueba Admin (ver nota de autenticación arriba).
+-- Método aprobado para este bloque exclusivamente: simulación controlada de claims JWT
+-- en el SQL Editor (ver nota de autenticación arriba). No es comportamiento de producción.
 
 BEGIN;
+
+-- REEMPLAZO MANUAL OBLIGATORIO ANTES DE EJECUTAR:
+-- sustituir <ADMIN_TEST_USER_UUID> por el UUID real del usuario de prueba Admin
+-- (reservas@ferranpropiedades.cl), obtenido por Luis fuera de este documento.
+-- SET LOCAL queda acotado a esta transacción; desaparece automáticamente con el ROLLBACK final.
+SET LOCAL role authenticated;
+SET LOCAL request.jwt.claims = '{"sub": "<ADMIN_TEST_USER_UUID>", "role": "authenticated"}';
 
 DO $$
 DECLARE
   v_test_item_id uuid;
   v_result record;
+  v_auth_uid uuid;
+  v_role text;
 BEGIN
+  -- 4.0. Verificar que la simulación de sesión quedó activa como Admin.
+  v_auth_uid := auth.uid();
+  IF v_auth_uid IS NULL THEN
+    RAISE EXCEPTION '4.0: auth.uid() es NULL — la simulación de claims JWT no quedó activa; revisar <ADMIN_TEST_USER_UUID> y el SET LOCAL request.jwt.claims anterior';
+  END IF;
+
+  v_role := get_my_role();
+  IF v_role IS DISTINCT FROM 'admin' THEN
+    RAISE EXCEPTION '4.0: get_my_role() esperado ''admin'', obtenido % para auth.uid() = %', v_role, v_auth_uid;
+  END IF;
+
   -- 4.1. Crear un ítem de prueba temporal (dentro de la misma transacción).
   INSERT INTO public.inventory_items (item_name, category, unit, current_stock, min_stock, created_by)
-  VALUES ('__PRUEBA_6G__ Ítem temporal', 'Otros', 'unidad', 10, 2, auth.uid())
+  VALUES ('__PRUEBA_6G__ Ítem temporal', 'Otros', 'unidad', 10, 2, v_auth_uid)
   RETURNING id INTO v_test_item_id;
 
   -- 4.2. Aplicar una entrada de regularización.
@@ -440,6 +465,15 @@ BEGIN
   IF v_result.new_stock IS DISTINCT FROM 15 THEN
     RAISE EXCEPTION '4.2: new_stock esperado 15, obtenido %', v_result.new_stock;
   END IF;
+  IF v_result.movement_type IS DISTINCT FROM 'entrada_regularizacion' THEN
+    RAISE EXCEPTION '4.2: movement_type esperado ''entrada_regularizacion'', obtenido %', v_result.movement_type;
+  END IF;
+  IF v_result.quantity IS DISTINCT FROM 5 THEN
+    RAISE EXCEPTION '4.2: quantity esperado 5, obtenido %', v_result.quantity;
+  END IF;
+  IF v_result.created_at IS NULL THEN
+    RAISE EXCEPTION '4.2: created_at no debe ser NULL';
+  END IF;
 
   -- 4.3. Aplicar una salida de consumo.
   SELECT * INTO v_result FROM public.inventory_apply_stock_movement(
@@ -450,6 +484,15 @@ BEGIN
   END IF;
   IF v_result.new_stock IS DISTINCT FROM 12 THEN
     RAISE EXCEPTION '4.3: new_stock esperado 12, obtenido %', v_result.new_stock;
+  END IF;
+  IF v_result.movement_type IS DISTINCT FROM 'salida_consumo' THEN
+    RAISE EXCEPTION '4.3: movement_type esperado ''salida_consumo'', obtenido %', v_result.movement_type;
+  END IF;
+  IF v_result.quantity IS DISTINCT FROM 3 THEN
+    RAISE EXCEPTION '4.3: quantity esperado 3, obtenido %', v_result.quantity;
+  END IF;
+  IF v_result.created_at IS NULL THEN
+    RAISE EXCEPTION '4.3: created_at no debe ser NULL';
   END IF;
 
   -- 4.4. Verificar current_stock actualizado y movimientos insertados.
@@ -466,8 +509,9 @@ END;
 $$;
 
 ROLLBACK;
--- Obligatorio: revertir todo lo hecho en este bloque de prueba, incluyendo el ítem
--- y los movimientos creados dentro del DO block.
+-- Obligatorio: revertir todo lo hecho en este bloque de prueba, incluyendo el ítem,
+-- los movimientos creados dentro del DO block, y la simulación de sesión (SET LOCAL
+-- queda acotado a esta transacción y desaparece automáticamente con este ROLLBACK).
 ```
 
 ---
