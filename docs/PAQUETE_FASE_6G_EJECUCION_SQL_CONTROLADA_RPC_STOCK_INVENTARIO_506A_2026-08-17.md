@@ -287,14 +287,18 @@ BEGIN
     WHERE id = p_item_id;
 
   -- 9. Inserción del movimiento correspondiente (evidencia obligatoria).
-  INSERT INTO public.inventory_movements (
+  --    Se usa el alias "im" y se califican id/created_at para evitar ambigüedad
+  --    en PL/pgSQL: RETURNS TABLE declara "created_at" como variable implícita,
+  --    y una referencia sin calificar en el RETURNING colisionaría con esa
+  --    variable bajo plpgsql.variable_conflict = error.
+  INSERT INTO public.inventory_movements AS im (
     item_id, movement_type, quantity, previous_stock, new_stock,
     reason, notes, created_by, linked_request_id
   ) VALUES (
     p_item_id, p_movement_type, p_quantity, v_previous_stock, v_new_stock,
     p_reason, p_notes, v_user_id, p_linked_request_id
   )
-  RETURNING id, created_at INTO v_movement_id, v_movement_created_at;
+  RETURNING im.id, im.created_at INTO v_movement_id, v_movement_created_at;
 
   -- 10. Resultado.
   RETURN QUERY
@@ -303,6 +307,15 @@ BEGIN
 END;
 $$;
 ```
+
+**Nota de seguridad operacional — secuencia BLOCK 1 → BLOCK 2 (Fase 6H):**
+
+- PostgreSQL otorga `EXECUTE` a `PUBLIC` por defecto en toda función recién creada, salvo que los privilegios por defecto hayan sido modificados de antemano (no es el caso aquí: ni BLOCK 0 ni BLOCK 1 alteran privilegios por defecto).
+- Por lo tanto, inmediatamente después de que BLOCK 1 se ejecute con éxito, y antes de que BLOCK 2 se ejecute, la función queda técnicamente invocable por `PUBLIC` — lo que en Supabase incluye a `anon` y a cualquier `authenticated` no-admin, vía PostgREST.
+- En consecuencia: si BLOCK 1 se ejecuta, BLOCK 2 debe solicitarse a Luis y ejecutarse **inmediatamente a continuación**, sin ninguna acción no relacionada de por medio.
+- BLOCK 1 y BLOCK 2 siguen siendo bloques separados, cada uno con aprobación explícita independiente. Esta nota **no autoriza combinarlos en un solo GO**; el modelo de autorización bloque por bloque (sección "Modelo de autorización de ejecución" del Acta Fase 6D) se mantiene sin cambios.
+- Esta ventana de exposición temporal está mitigada — no eliminada — por las validaciones internas de la función: el paso 0 (`auth.uid() IS NULL` → excepción) y el paso 1 (`get_my_role() IS DISTINCT FROM 'admin'` → excepción) se ejecutan antes de cualquier lectura con bloqueo o escritura. Ningún llamador `anon` o `authenticated` no-admin puede completar una mutación durante esta ventana, aun si técnicamente puede invocar la función. Sin embargo, el límite de defensa en profundidad previsto por diseño (permisos a nivel SQL) no queda completo hasta que BLOCK 2 se ejecute.
+- Si BLOCK 1 se ejecuta con éxito pero BLOCK 2 no puede ejecutarse de inmediato por cualquier motivo, **detenerse y reportar a Luis antes de realizar cualquier otra acción**, incluyendo tareas no relacionadas con esta fase.
 
 ---
 
@@ -738,6 +751,8 @@ Todas las pruebas de este plan deben ejecutarse dentro de transacciones explíci
 - [ ] Método de autenticación para las pruebas en tiempo de ejecución (BLOCK 4/BLOCK 5) confirmado por Luis: **PostgREST/RPC con JWT real** o **SQL Editor con simulación controlada de claims JWT**. El método de simulación en el SQL Editor requiere aprobación explícita antes de usarse; si se elige PostgREST/RPC, los bloques `DO` deben traducirse a llamadas de API equivalentes (ver nota antes de BLOCK 4).
 - [ ] Camino de rollback (BLOCK 8) entendido y aceptado antes de ejecutar BLOCK 1.
 - [ ] Confirmación de que la UI permanece desconectada durante y después de la ejecución de este paquete.
+- [ ] Secuencia BLOCK 1 → BLOCK 2 reconocida: si BLOCK 1 se ejecuta con éxito, Luis debe decidir de inmediato el GO/NO-GO de BLOCK 2 (permisos) antes de realizar cualquier tarea no relacionada (ver nota operacional entre BLOCK 1 y BLOCK 2).
+- [ ] Ningún trabajo de UI puede iniciarse hasta que BLOCK 2 y su verificación (BLOCK 3) estén completos.
 
 Ningún ítem de este checklist está marcado como completado por este documento. Es responsabilidad de Luis marcarlos en el momento de decidir la ejecución.
 
