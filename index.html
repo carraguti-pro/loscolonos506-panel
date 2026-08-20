@@ -2253,8 +2253,11 @@ Son independientes del pago operacional y pueden solicitarse en cualquier orden.
       <div class="page" id="page-inventario">
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem">
-            <div><div class="card-title" style="margin-bottom:.1rem">📦 Inventario</div><div style="font-size:.56rem;color:var(--muted)">Catálogo de ítems de inventario · solo lectura.</div></div>
-            <button class="btn btn-ghost btn-sm" onclick="loadInventario()">↺ Actualizar</button>
+            <div><div class="card-title" style="margin-bottom:.1rem">📦 Inventario</div><div style="font-size:.56rem;color:var(--muted)">Catálogo de ítems de inventario.</div></div>
+            <div style="display:flex;gap:.4rem">
+              <button class="btn btn-ghost btn-sm" onclick="loadInventario()">↺ Actualizar</button>
+              <button class="btn btn-ink btn-sm" onclick="openModal('m-inv-item')">+ Nuevo ítem</button>
+            </div>
           </div>
           <div id="inv-list"><div class="empty" style="padding:1rem 0">Cargando inventario...</div></div>
         </div>
@@ -2545,6 +2548,30 @@ Son independientes del pago operacional y pueden solicitarse en cualquier orden.
       <div class="form-row"><div class="fg"><label class="fl">Stock actual</label><input type="number" class="fi" id="rep-ins-stock" min="0" placeholder="Ej: 10"></div><div class="fg"><label class="fl">Stock mínimo</label><input type="number" class="fi" id="rep-ins-min" min="0" placeholder="Ej: 2"></div></div>
     </div>
     <div class="modal-ft"><button class="btn btn-ghost" onclick="closeModal('m-reponer')">Cancelar</button><button class="btn btn-ink" onclick="saveReponer()">Actualizar</button></div>
+  </div>
+</div>
+<div class="overlay" id="m-inv-item">
+  <div class="modal">
+    <div class="modal-hd"><div class="modal-title">Nuevo Ítem de Inventario</div><button class="modal-x" onclick="closeModal('m-inv-item')">✕</button></div>
+    <div class="modal-body">
+      <div class="fg"><label class="fl">Nombre</label><input class="fi" id="inv-item-name" placeholder="Ej: Papel higiénico"></div>
+      <div class="form-row">
+        <div class="fg"><label class="fl">Categoría</label><select class="fi" id="inv-item-category">
+          <option value="">Seleccione...</option>
+          <option value="Limpieza">Limpieza</option>
+          <option value="Baño">Baño</option>
+          <option value="Cocina">Cocina</option>
+          <option value="Ropa blanca">Ropa blanca</option>
+          <option value="Losa y menaje">Losa y menaje</option>
+          <option value="Equipamiento menor">Equipamiento menor</option>
+          <option value="Mantención / repuestos">Mantención / repuestos</option>
+          <option value="Otros">Otros</option>
+        </select></div>
+        <div class="fg"><label class="fl">Unidad</label><input class="fi" id="inv-item-unit" placeholder="Ej: unidad, litro, kg"></div>
+      </div>
+      <div class="fg"><label class="fl">Stock mínimo</label><input type="number" class="fi" id="inv-item-min-stock" value="0" min="0"></div>
+    </div>
+    <div class="modal-ft"><button class="btn btn-ghost" onclick="closeModal('m-inv-item')">Cancelar</button><button class="btn btn-ink" onclick="saveInventoryItem()">Guardar</button></div>
   </div>
 </div>
 <div class="overlay" id="m-editar-reporte">
@@ -2946,6 +2973,32 @@ async function loadInventario(){
     <thead><tr><th>Ítem</th><th>Categoría</th><th>Unidad</th><th>Stock actual</th><th>Stock mínimo</th><th>Estado</th></tr></thead>
     <tbody>${rows.map(i=>`<tr><td>${esc(i.item_name)||'—'}</td><td>${esc(i.category)||'—'}</td><td>${esc(i.unit)||'—'}</td><td>${i.current_stock??'—'}</td><td>${i.min_stock??'—'}</td><td>${i.active===false?'Inactivo':'Activo'}</td></tr>`).join('')}</tbody>
   </table></div>`;
+}
+
+async function saveInventoryItem(){
+  const nameEl=document.getElementById('inv-item-name');
+  const catEl=document.getElementById('inv-item-category');
+  const unitEl=document.getElementById('inv-item-unit');
+  const minEl=document.getElementById('inv-item-min-stock');
+  const item_name=(nameEl?.value||'').trim();
+  const category=catEl?.value||'';
+  const unit=(unitEl?.value||'').trim();
+  const min_stock=parseFloat(minEl?.value);
+  if(!item_name){toast('Ingrese el nombre del ítem','err');return;}
+  if(!category){toast('Seleccione una categoría','err');return;}
+  if(!unit){toast('Ingrese la unidad de medida','err');return;}
+  if(isNaN(min_stock)||min_stock<0){toast('Stock mínimo inválido','err');return;}
+  try{
+    const r=await sbPost('inventory_items',{item_name,category,unit,min_stock});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    toast('✅ Ítem de inventario creado','ok');
+    closeModal('m-inv-item');
+    if(nameEl)nameEl.value='';
+    if(catEl)catEl.value='';
+    if(unitEl)unitEl.value='';
+    if(minEl)minEl.value='0';
+    await loadInventario();
+  }catch(e){console.error('[Panel] saveInventoryItem:',e);toast('Error al guardar el ítem','err');}
 }
 
 function openDetalleReporte(idx){
