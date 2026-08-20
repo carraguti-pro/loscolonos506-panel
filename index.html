@@ -1564,6 +1564,7 @@ Son independientes del pago operacional y pueden solicitarse en cualquier orden.
       <a class="nav-item" onclick="showPage('reportes-ops')"><span>📝</span> Revisión Operacional</a>
       <a class="nav-item" onclick="showPage('solicitudes-pago')"><span>💳</span> Solicitudes de Pago</a>
       <a class="nav-item" onclick="showPage('resumen-ops')"><span>📊</span> Resumen Operacional</a>
+      <a class="nav-item" onclick="showPage('inventario')"><span>📦</span> Inventario</a>
       <div class="sb-sec">Sistema</div>
       <a class="nav-item" onclick="showPage('config')"><span>⚙</span> Configuración</a>
     </nav>
@@ -2249,6 +2250,16 @@ Son independientes del pago operacional y pueden solicitarse en cualquier orden.
         </div>
       </div>
 
+      <div class="page" id="page-inventario">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem">
+            <div><div class="card-title" style="margin-bottom:.1rem">📦 Inventario</div><div style="font-size:.56rem;color:var(--muted)">Catálogo de ítems de inventario · solo lectura.</div></div>
+            <button class="btn btn-ghost btn-sm" onclick="loadInventario()">↺ Actualizar</button>
+          </div>
+          <div id="inv-list"><div class="empty" style="padding:1rem 0">Cargando inventario...</div></div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -2809,7 +2820,7 @@ function showPage(p){
   document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
   document.getElementById('page-'+p)?.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(x=>{if(x.getAttribute('onclick')?.includes("'"+p+"'"))x.classList.add('active');});
-  const titles={dashboard:'Dashboard',reservations:'Reservas',calendar:'Calendario',finances:'Finanzas',liquidaciones:'Liquidaciones','comisiones-booking':'Comisiones Booking · Provisiones',config:'Configuración','reportes-ops':'Revisión Operacional','solicitudes-pago':'Solicitudes de Pago Servicios','resumen-ops':'Resumen Operacional'};
+  const titles={dashboard:'Dashboard',reservations:'Reservas',calendar:'Calendario',finances:'Finanzas',liquidaciones:'Liquidaciones','comisiones-booking':'Comisiones Booking · Provisiones',config:'Configuración','reportes-ops':'Revisión Operacional','solicitudes-pago':'Solicitudes de Pago Servicios','resumen-ops':'Resumen Operacional',inventario:'Inventario'};
   document.getElementById('topbar-title').textContent=titles[p]||p;
   if(p==='reservations')loadReservas();
   if(p==='calendar'){
@@ -2830,6 +2841,7 @@ function showPage(p){
   if(p==='solicitudes-pago')loadSolicitudesPago();
   if(p==='resumen-ops')loadResumenOps();
   if(p==='comisiones-booking')initComisionesBooking();
+  if(p==='inventario')loadInventario();
 }
 
 // ══ REPORTES DE OPERACIONES ════════════════════════════════
@@ -2920,6 +2932,20 @@ async function loadOpsReports(){
       <div style="font-size:.54rem;color:var(--muted);margin-top:.35rem;border-top:1px solid rgba(0,0,0,.05);padding-top:.3rem">${fechaReg}</div>
     </div>`;
   }).join('');
+}
+
+async function loadInventario(){
+  const list=document.getElementById('inv-list');
+  if(!list)return;
+  list.innerHTML='<div class="empty" style="padding:1rem 0">Cargando inventario...</div>';
+  const data=await sbGet('inventory_items','order=category.asc,item_name.asc&limit=500');
+  const rows=Array.isArray(data)?data:[];
+  if(!rows.length){list.innerHTML='<div class="empty" style="padding:1.5rem 0">No hay artículos de inventario registrados.</div>';return;}
+  const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  list.innerHTML=`<div class="tbl-wrap"><table>
+    <thead><tr><th>Ítem</th><th>Categoría</th><th>Unidad</th><th>Stock actual</th><th>Stock mínimo</th><th>Estado</th></tr></thead>
+    <tbody>${rows.map(i=>`<tr><td>${esc(i.item_name)||'—'}</td><td>${esc(i.category)||'—'}</td><td>${esc(i.unit)||'—'}</td><td>${i.current_stock??'—'}</td><td>${i.min_stock??'—'}</td><td>${i.active===false?'Inactivo':'Activo'}</td></tr>`).join('')}</tbody>
+  </table></div>`;
 }
 
 function openDetalleReporte(idx){
