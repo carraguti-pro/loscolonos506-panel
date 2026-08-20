@@ -2574,6 +2574,25 @@ Son independientes del pago operacional y pueden solicitarse en cualquier orden.
     <div class="modal-ft"><button class="btn btn-ghost" onclick="closeModal('m-inv-item')">Cancelar</button><button class="btn btn-ink" onclick="saveInventoryItem()">Guardar</button></div>
   </div>
 </div>
+<div class="overlay" id="m-inv-movimiento">
+  <div class="modal">
+    <div class="modal-hd"><div><div class="modal-title">Movimiento de Stock</div><div id="inv-mov-ctx" style="font-size:.6rem;color:var(--muted);margin-top:.1rem"></div></div><button class="modal-x" onclick="closeInvMovModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="fg"><label class="fl">Tipo de movimiento</label><select class="fi" id="inv-mov-type">
+        <option value="">Seleccione...</option>
+        <option value="entrada_compra">Entrada · Compra</option>
+        <option value="entrada_regularizacion">Entrada · Regularización</option>
+        <option value="salida_consumo">Salida · Consumo</option>
+        <option value="baja_daño">Baja · Daño</option>
+        <option value="baja_perdida">Baja · Pérdida</option>
+      </select></div>
+      <div class="fg"><label class="fl">Cantidad</label><input type="number" class="fi" id="inv-mov-qty" step="any" placeholder="Ej: 5"></div>
+      <div class="fg"><label class="fl">Motivo <span style="font-size:.62rem;color:var(--muted);font-weight:400">(opcional)</span></label><input class="fi" id="inv-mov-reason" placeholder="Ej: Compra mensual"></div>
+      <div class="fg"><label class="fl">Notas <span style="font-size:.62rem;color:var(--muted);font-weight:400">(opcional)</span></label><textarea class="ft" id="inv-mov-notes" placeholder="Observaciones adicionales..."></textarea></div>
+    </div>
+    <div class="modal-ft"><button class="btn btn-ghost" onclick="closeInvMovModal()">Cancelar</button><button class="btn btn-ink" id="inv-mov-save-btn" onclick="saveInvMovement()">Aplicar</button></div>
+  </div>
+</div>
 <div class="overlay" id="m-editar-reporte">
   <div class="modal" style="max-height:88vh;display:flex;flex-direction:column">
     <div class="modal-hd"><div><div class="modal-title">Editar Reporte</div><div id="er-ctx" style="font-size:.57rem;color:var(--muted);margin-top:.1rem"></div></div><button class="modal-x" onclick="closeModal('m-editar-reporte')">✕</button></div>
@@ -2673,6 +2692,7 @@ let SV_RES=[],REPORTE_CTX=null,REPORTE_MANT_MODE=false,_ACTIVE_OWNER_NOTES=[]; /
 let _svPagoLock=false,_svReporteLock=false,_svGastoOpLock=false;
 let SV_INS=[],REPONER_CTX=null; // Servicios: insumos cargados y contexto activo para reponer
 let OPS_REPORTS=[],EDIT_OPS_CTX=null; // Admin: reportes operaciones cargados y contexto activo para editar
+let INV_ITEMS=[],INV_MOV_CTX=null,_invMovLock=false; // Admin: ítems de inventario cargados y contexto activo para movimiento de stock
 let calY=new Date().getFullYear(),calM=new Date().getMonth();
 let USD_CLP=960,UF_CLP=40200;
 let USD_CLP_SOURCE='manual',USD_CLP_DATE=null; // fuente y fecha del dólar observado
@@ -2967,11 +2987,12 @@ async function loadInventario(){
   list.innerHTML='<div class="empty" style="padding:1rem 0">Cargando inventario...</div>';
   const data=await sbGet('inventory_items','order=category.asc,item_name.asc&limit=500');
   const rows=Array.isArray(data)?data:[];
+  INV_ITEMS=rows;
   if(!rows.length){list.innerHTML='<div class="empty" style="padding:1.5rem 0">No hay artículos de inventario registrados.</div>';return;}
   const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   list.innerHTML=`<div class="tbl-wrap"><table>
-    <thead><tr><th>Ítem</th><th>Categoría</th><th>Unidad</th><th>Stock actual</th><th>Stock mínimo</th><th>Estado</th></tr></thead>
-    <tbody>${rows.map(i=>`<tr><td>${esc(i.item_name)||'—'}</td><td>${esc(i.category)||'—'}</td><td>${esc(i.unit)||'—'}</td><td>${i.current_stock??'—'}</td><td>${i.min_stock??'—'}</td><td>${i.active===false?'Inactivo':'Activo'}</td></tr>`).join('')}</tbody>
+    <thead><tr><th>Ítem</th><th>Categoría</th><th>Unidad</th><th>Stock actual</th><th>Stock mínimo</th><th>Estado</th><th></th></tr></thead>
+    <tbody>${rows.map((i,idx)=>`<tr><td>${esc(i.item_name)||'—'}</td><td>${esc(i.category)||'—'}</td><td>${esc(i.unit)||'—'}</td><td>${i.current_stock??'—'}</td><td>${i.min_stock??'—'}</td><td>${i.active===false?'Inactivo':'Activo'}</td><td>${i.active===false?'—':`<button class="btn btn-ghost btn-xs" onclick="openInvMovModal(${idx})">Movimiento</button>`}</td></tr>`).join('')}</tbody>
   </table></div>`;
 }
 
@@ -2999,6 +3020,112 @@ async function saveInventoryItem(){
     if(minEl)minEl.value='0';
     await loadInventario();
   }catch(e){console.error('[Panel] saveInventoryItem:',e);toast('Error al guardar el ítem','err');}
+}
+
+function closeInvMovModal(){
+  if(_invMovLock){toast('Hay un movimiento de stock en proceso','err');return;}
+  INV_MOV_CTX=null;
+  closeModal('m-inv-movimiento');
+}
+
+function openInvMovModal(idx){
+  if(_invMovLock){toast('Hay un movimiento de stock en proceso','err');return;}
+  const item=INV_ITEMS[idx];
+  if(!item){toast('Ítem no encontrado','err');return;}
+  if(item.active===false){toast('No se pueden registrar movimientos en un ítem inactivo','err');return;}
+  INV_MOV_CTX=item;
+  const ctxEl=document.getElementById('inv-mov-ctx');
+  if(ctxEl)ctxEl.textContent=(item.item_name||'—')+' · Stock actual: '+(item.current_stock??'—')+' '+(item.unit||'');
+  const typeEl=document.getElementById('inv-mov-type');if(typeEl)typeEl.value='';
+  const qtyEl=document.getElementById('inv-mov-qty');if(qtyEl)qtyEl.value='';
+  const reasonEl=document.getElementById('inv-mov-reason');if(reasonEl)reasonEl.value='';
+  const notesEl=document.getElementById('inv-mov-notes');if(notesEl)notesEl.value='';
+  openModal('m-inv-movimiento');
+}
+
+async function saveInvMovement(){
+  if(!INV_MOV_CTX||!INV_MOV_CTX.id){toast('Seleccione un ítem antes de registrar el movimiento','err');return;}
+  if(INV_MOV_CTX.active===false){toast('No se pueden registrar movimientos en un ítem inactivo','err');return;}
+  const typeEl=document.getElementById('inv-mov-type');
+  const qtyEl=document.getElementById('inv-mov-qty');
+  const reasonEl=document.getElementById('inv-mov-reason');
+  const notesEl=document.getElementById('inv-mov-notes');
+  const p_movement_type=typeEl?.value||'';
+  const allowedTypes=['entrada_compra','entrada_regularizacion','salida_consumo','baja_daño','baja_perdida'];
+  if(!allowedTypes.includes(p_movement_type)){toast('Tipo de movimiento inválido','err');return;}
+  const p_quantity=parseFloat(qtyEl?.value);
+  if(!isFinite(p_quantity)||p_quantity<=0){toast('Ingrese una cantidad válida mayor que cero','err');return;}
+  const p_reason=(reasonEl?.value||'').trim()||null;
+  const p_notes=(notesEl?.value||'').trim()||null;
+  if(_invMovLock)return;
+  _invMovLock=true;
+  const btn=document.getElementById('inv-mov-save-btn');
+  const btnTxt=btn?.textContent;
+  if(btn){btn.disabled=true;btn.textContent='Procesando…';}
+  try{
+    const resp=await fetch(`${SB}/rest/v1/rpc/inventory_apply_stock_movement`,{
+      method:'POST',
+      headers:{...sbH(),'Content-Type':'application/json'},
+      body:JSON.stringify({p_item_id:INV_MOV_CTX.id,p_movement_type,p_quantity,p_reason,p_notes})
+    });
+    if(!resp.ok){
+      let errBody=null,parseFailed=false;
+      try{
+        errBody=await resp.json();
+        console.error('[Panel] saveInvMovement RPC error:',errBody);
+      }catch(parseErr){
+        parseFailed=true;
+        console.error('[Panel] saveInvMovement error parse:',parseErr);
+      }
+      if(!parseFailed&&errBody?.code==='P0001'){
+        // Confirmed business-rule rejection from the RPC itself — no change was
+        // applied, safe to retry. Keep the modal open with entered values intact.
+        toast(errBody?.message||'No fue posible aplicar el movimiento','err');
+        return;
+      }
+      // Any other non-2xx (unexpected code, HTTP 5xx, gateway error, unparseable
+      // body): the mutation outcome is NOT confirmed as rejected. Never treat this
+      // as a normal retryable failure — reconcile via a deliberate manual refresh.
+      console.error('[Panel] saveInvMovement non-2xx no confirmado:',resp.status,errBody);
+      toast('No se pudo confirmar el resultado del movimiento. Revise el stock antes de reintentar.','err');
+      closeModal('m-inv-movimiento');
+      INV_MOV_CTX=null;
+      return;
+    }
+    try{
+      const data=await resp.json();
+      const row=(Array.isArray(data)&&data.length===1)?data[0]:null;
+      if(!row||typeof row.previous_stock!=='number'||typeof row.new_stock!=='number'||!row.movement_id){
+        throw new Error('Respuesta RPC con forma inesperada');
+      }
+      toast('✅ Stock actualizado: '+row.previous_stock+' → '+row.new_stock,'ok');
+      closeModal('m-inv-movimiento');
+      INV_MOV_CTX=null;
+      await loadInventario();
+    }catch(shapeErr){
+      // Case B: HTTP 2xx but the body could not be parsed or did not match the exact
+      // one-row contract. The mutation may already be committed server-side — never
+      // present this as a normal retryable failure. Reconcile from the server instead.
+      console.error('[Panel] saveInvMovement respuesta inesperada:',shapeErr);
+      toast('Movimiento procesado, pero no se pudo confirmar el resultado. Revise el stock antes de reintentar.','err');
+      closeModal('m-inv-movimiento');
+      INV_MOV_CTX=null;
+      await loadInventario();
+    }
+  }catch(e){
+    // Case C: network/fetch exception after the request was initiated — outcome unknown.
+    // Do not encourage an immediate blind retry, and do not auto-refresh: sbGet() turns
+    // read failures into an empty array, so calling loadInventario() while connectivity
+    // is down could falsely render the inventory as empty. Require a deliberate manual
+    // refresh via the existing "Actualizar" button once connectivity is confirmed back.
+    console.error('[Panel] saveInvMovement:',e);
+    toast('No se pudo confirmar el resultado del movimiento. Cuando recupere conexión, pulse Actualizar y revise el stock antes de reintentar.','err');
+    closeModal('m-inv-movimiento');
+    INV_MOV_CTX=null;
+  }finally{
+    _invMovLock=false;
+    if(btn){btn.disabled=false;btn.textContent=btnTxt||'Aplicar';}
+  }
 }
 
 function openDetalleReporte(idx){
@@ -7709,8 +7836,20 @@ function stBadge(s){const m={
 function openModal(id){document.getElementById(id)?.classList.add('show');}
 function closeModal(id){document.getElementById(id)?.classList.remove('show');}
 function toast(msg,type='ok'){const t=document.getElementById('toast-el');t.textContent=msg;t.className='toast show '+type;setTimeout(()=>t.classList.remove('show'),3200);}
-document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.overlay.show').forEach(m=>m.classList.remove('show'));});
-document.querySelectorAll('.overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('show');}));
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape')return;
+  const invMov=document.getElementById('m-inv-movimiento');
+  if(invMov&&invMov.classList.contains('show')){
+    closeInvMovModal();
+    if(_invMovLock)return;
+  }
+  document.querySelectorAll('.overlay.show').forEach(m=>m.classList.remove('show'));
+});
+document.querySelectorAll('.overlay').forEach(m=>m.addEventListener('click',e=>{
+  if(e.target!==m)return;
+  if(m.id==='m-inv-movimiento'){closeInvMovModal();return;}
+  m.classList.remove('show');
+}));
 document.getElementById('g-fecha').value=new Date().toISOString().split('T')[0];
 (async function init(){
   checkRecoveryHash();
