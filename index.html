@@ -511,6 +511,14 @@ tr.historico-row:hover td{opacity:.82}
 .fi:focus,.fs:focus,.ft:focus{border-color:var(--gold)}
 .ft{resize:vertical;min-height:68px}
 
+/* Inventario (Admin) — clases de tipografía reutilizadas por mobile tuning */
+.inv-subtitle{font-size:.56rem;color:var(--muted)}
+.inv-ctx{font-size:.6rem;color:var(--muted);margin-top:.1rem}
+.inv-hist-type{font-size:.68rem;font-weight:600}
+.inv-hist-date{font-size:.6rem;color:var(--muted)}
+.inv-hist-stock{font-size:.65rem;margin-top:.15rem}
+.inv-hist-note{font-size:.62rem;color:var(--muted)}
+
 /* Toast */
 .toast{position:fixed;bottom:1.5rem;right:1.5rem;z-index:500;background:var(--navy);color:#fff;padding:.7rem 1.3rem;font-size:.75rem;border-left:3px solid var(--gold);transform:translateY(60px);opacity:0;transition:all .25s;pointer-events:none;border-radius:var(--r)}
 .toast.show{transform:translateY(0);opacity:1}.toast.ok{border-left-color:var(--success)}.toast.err{border-left-color:var(--danger)}.toast.warn{background:#fff7ed;color:#7c2d12;border-left-color:#d97706}
@@ -552,6 +560,26 @@ tr.historico-row:hover td{opacity:.82}
   .col-codigo,.col-plataforma{display:none}
   .kpi-val{font-size:1.6rem}
   .donut-wrap{flex-direction:column;align-items:flex-start}
+}
+/* Inventario (Admin) — legibilidad mobile, solo tipografía */
+@media (max-width:640px){
+  #page-inventario .card-title{font-size:1.08rem}
+  #page-inventario .inv-subtitle{font-size:.66rem}
+  #page-inventario th{font-size:.6rem}
+  #page-inventario td{font-size:.86rem}
+  #page-inventario td:first-child{font-weight:600}
+  #page-inventario .btn{font-size:.64rem}
+  #page-inventario .btn-sm{font-size:.6rem}
+  #page-inventario .btn-xs{font-size:.58rem}
+  #m-inv-item .modal-title,#m-inv-movimiento .modal-title,#m-inv-historial .modal-title{font-size:1.18rem}
+  #m-inv-item .fl,#m-inv-movimiento .fl,#m-inv-historial .fl{font-size:.62rem;font-weight:600}
+  #m-inv-item .fi,#m-inv-item .fs,#m-inv-item .ft,#m-inv-movimiento .fi,#m-inv-movimiento .fs,#m-inv-movimiento .ft,#m-inv-historial .fi,#m-inv-historial .fs,#m-inv-historial .ft{font-size:.88rem}
+  #m-inv-item .modal-ft .btn,#m-inv-movimiento .modal-ft .btn,#m-inv-historial .modal-ft .btn{font-size:.64rem}
+  .inv-ctx{font-size:.7rem}
+  #m-inv-historial .inv-hist-type{font-size:.78rem}
+  #m-inv-historial .inv-hist-date{font-size:.68rem}
+  #m-inv-historial .inv-hist-stock{font-size:.74rem}
+  #m-inv-historial .inv-hist-note{font-size:.7rem}
 }
 @media print{.sidebar,.topbar,button,.sb-footer,#toast-el{display:none!important}.main{margin:0;height:auto}body{background:white}}
 /* ══════════════════════════════════════════
@@ -2253,7 +2281,7 @@ Son independientes del pago operacional y pueden solicitarse en cualquier orden.
       <div class="page" id="page-inventario">
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem">
-            <div><div class="card-title" style="margin-bottom:.1rem">📦 Inventario</div><div style="font-size:.56rem;color:var(--muted)">Catálogo de ítems de inventario.</div></div>
+            <div><div class="card-title" style="margin-bottom:.1rem">📦 Inventario</div><div class="inv-subtitle">Catálogo de ítems de inventario.</div></div>
             <div style="display:flex;gap:.4rem">
               <button class="btn btn-ghost btn-sm" onclick="loadInventario()">↺ Actualizar</button>
               <button class="btn btn-ink btn-sm" onclick="openModal('m-inv-item')">+ Nuevo ítem</button>
@@ -2576,7 +2604,7 @@ Son independientes del pago operacional y pueden solicitarse en cualquier orden.
 </div>
 <div class="overlay" id="m-inv-movimiento">
   <div class="modal">
-    <div class="modal-hd"><div><div class="modal-title">Movimiento de Stock</div><div id="inv-mov-ctx" style="font-size:.6rem;color:var(--muted);margin-top:.1rem"></div></div><button class="modal-x" onclick="closeInvMovModal()">✕</button></div>
+    <div class="modal-hd"><div><div class="modal-title">Movimiento de Stock</div><div id="inv-mov-ctx" class="inv-ctx"></div></div><button class="modal-x" onclick="closeInvMovModal()">✕</button></div>
     <div class="modal-body">
       <div class="fg"><label class="fl">Tipo de movimiento</label><select class="fi" id="inv-mov-type">
         <option value="">Seleccione...</option>
@@ -2595,7 +2623,7 @@ Son independientes del pago operacional y pueden solicitarse en cualquier orden.
 </div>
 <div class="overlay" id="m-inv-historial">
   <div class="modal" style="max-height:88vh;display:flex;flex-direction:column">
-    <div class="modal-hd"><div><div class="modal-title">Historial de Inventario</div><div id="inv-hist-ctx" style="font-size:.6rem;color:var(--muted);margin-top:.1rem"></div></div><button class="modal-x" onclick="closeModal('m-inv-historial')">✕</button></div>
+    <div class="modal-hd"><div><div class="modal-title">Historial de Inventario</div><div id="inv-hist-ctx" class="inv-ctx"></div></div><button class="modal-x" onclick="closeModal('m-inv-historial')">✕</button></div>
     <div class="modal-body" style="overflow-y:auto;flex:1" id="inv-hist-body"></div>
     <div class="modal-ft"><button class="btn btn-ghost" onclick="closeModal('m-inv-historial')">Cerrar</button></div>
   </div>
@@ -3179,14 +3207,14 @@ async function openInvHistorialModal(idx){
     if(bodyEl)bodyEl.innerHTML=rows.map(m=>{
       const fecha=m.created_at?new Date(m.created_at).toLocaleString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
       const tipoLabel=INV_MOV_TYPE_LABELS[m.movement_type]||('Movimiento: '+esc(m.movement_type||'—'));
-      const reasonHTML=m.reason?`<div style="font-size:.62rem;color:var(--muted);margin-top:.15rem">Motivo: ${esc(m.reason)}</div>`:'';
-      const notesHTML=m.notes?`<div style="font-size:.62rem;color:var(--muted);margin-top:.1rem">Notas: ${esc(m.notes)}</div>`:'';
+      const reasonHTML=m.reason?`<div class="inv-hist-note" style="margin-top:.15rem">Motivo: ${esc(m.reason)}</div>`:'';
+      const notesHTML=m.notes?`<div class="inv-hist-note" style="margin-top:.1rem">Notas: ${esc(m.notes)}</div>`:'';
       return `<div style="padding:.55rem 0;border-bottom:1px solid rgba(0,0,0,.06)">
         <div style="display:flex;justify-content:space-between;align-items:baseline;gap:.5rem;flex-wrap:wrap">
-          <span style="font-size:.68rem;font-weight:600">${tipoLabel}</span>
-          <span style="font-size:.6rem;color:var(--muted)">${fecha}</span>
+          <span class="inv-hist-type">${tipoLabel}</span>
+          <span class="inv-hist-date">${fecha}</span>
         </div>
-        <div style="font-size:.65rem;margin-top:.15rem">Cantidad: ${m.quantity??'—'} · Stock: ${m.previous_stock??'—'} → ${m.new_stock??'—'}</div>
+        <div class="inv-hist-stock">Cantidad: ${m.quantity??'—'} · Stock: ${m.previous_stock??'—'} → ${m.new_stock??'—'}</div>
         ${reasonHTML}${notesHTML}
       </div>`;
     }).join('');
