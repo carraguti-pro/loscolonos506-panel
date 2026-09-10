@@ -5249,8 +5249,8 @@ async function verDet(id){
     ${(()=>{
       // Tarjeta Welcome Oasis — visualmente independiente. El nombre COMPLETO
       // del huésped que se muestra aquí es solo una ayuda de confirmación
-      // interna para el admin; a la URL pública sigue yendo únicamente el
-      // primer nombre validado (ver copyWelcomeLink / buildWelcomeUrl).
+      // interna para el admin; a la URL pública (?stay=<token>) NO va ningún
+      // dato de la reserva — Welcome los resuelve en vivo (ver copyWelcomeLink).
       const _esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
       const _guest=_esc(r.guest_name||'—');
       const _stay=`${welcomeFmtStayDate(r.check_in)} → ${welcomeFmtStayDate(r.check_out)}`;
@@ -5263,8 +5263,13 @@ async function verDet(id){
           <div class="welcome-card-na">Link Welcome no disponible para esta reserva — ${_elig.reason}.</div>
         </div>`;
       }
-      const _fn=suggestWelcomeFirstName(r.guest_name);
-      const _url=buildWelcomeUrl(_fn||'Huesped',r.check_in,r.check_out);
+      // Prefill: the admin-confirmed welcome_first_name if a link was already
+      // issued, otherwise a fresh suggestion from guest_name.
+      const _fn=(r.welcome_first_name&&welcomeFirstNameValid(r.welcome_first_name))
+        ? r.welcome_first_name.trim()
+        : suggestWelcomeFirstName(r.guest_name);
+      const _tok=_welcomeKnownToken(r);
+      const _url=_tok?buildWelcomeStayUrl(_tok):(WELCOME_OASIS_BASE+'?stay=… (se genera al copiar)');
       const _btnFn=welcomeFirstNameValid(_fn)?' · '+_fn.toUpperCase():'';
       return `<div class="welcome-card">
         <div class="welcome-card-hd">Welcome Oasis</div>
@@ -5273,8 +5278,9 @@ async function verDet(id){
         <label class="welcome-card-fnlbl" for="welcome-fn-${r.id}">Primer nombre para Welcome</label>
         <input id="welcome-fn-${r.id}" class="fi welcome-card-fn" value="${_esc(_fn)}" maxlength="40" autocomplete="off" spellcheck="false" oninput="refreshWelcomeUrlPreview('${r.id}')">
         <div class="welcome-card-help">Solo este primer nombre irá en el link Welcome. Puedes corregirlo aquí sin modificar la reserva.</div>
-        <div id="welcome-url-${r.id}" class="welcome-card-url">${_url}</div>
+        <div id="welcome-url-${r.id}" class="welcome-card-url">${_esc(_url)}</div>
         <button type="button" id="welcome-copy-${r.id}" class="btn-reg-pago" onclick="copyWelcomeLink('${r.id}')">🔗 Copiar link Welcome${_btnFn}</button>
+        <div class="welcome-card-help" style="margin:.4rem 0 0">Enlace dinámico · se actualiza con la reserva.</div>
       </div>`;
     })()}
     <div class="det-section">
@@ -5528,8 +5534,9 @@ function welcomeFmtStayDate(value){
   return String(d.getDate()).padStart(2,'0')+' '+WELCOME_MESES_ABREV[d.getMonth()]+' '+d.getFullYear();
 }
 
-// Construye la URL con API nativa. URLSearchParams codifica correctamente
-// acentos y espacios; Welcome (P5.3) los decodifica al leer la query.
+// LEGACY (P5.5-B1 snapshot mode). Kept only so already-sent ?guest= links
+// keep working in Welcome; the panel no longer generates this shape. It
+// embeds a point-in-time copy of the dates that cannot follow later edits.
 function buildWelcomeUrl(firstName,checkin,checkout){
   const u=new URL(WELCOME_OASIS_BASE);
   u.searchParams.set('guest',firstName);
@@ -5538,8 +5545,25 @@ function buildWelcomeUrl(firstName,checkin,checkout){
   return u.toString();
 }
 
+// P5.5-C1 live link: the opaque token carries no stay data. Welcome resolves
+// first name + current check-in/check-out from the reservation at runtime.
+const WELCOME_TOKEN_PATTERN=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function buildWelcomeStayUrl(token){
+  const u=new URL(WELCOME_OASIS_BASE);
+  u.searchParams.set('stay',token);
+  return u.toString();
+}
+// In-memory cache of the token per reservation id, so re-opening the modal
+// or re-copying shows/uses the SAME link without another round-trip. The
+// authoritative value is reservations.welcome_token (loaded into RES).
+const _welcomeTokenCache=new Map();
+function _welcomeKnownToken(r){
+  return (r&&r.welcome_token)||_welcomeTokenCache.get(r&&r.id)||null;
+}
+
 // Refresca la vista previa de la URL y el estado del botón al editar el
-// primer nombre en el modal de detalle.
+// primer nombre en el modal de detalle. Muestra el link de token real si ya
+// existe; si no, un marcador (el token se emite al copiar).
 function refreshWelcomeUrlPreview(resId){
   const inp=document.getElementById('welcome-fn-'+resId);
   const prev=document.getElementById('welcome-url-'+resId);
@@ -5554,24 +5578,59 @@ function refreshWelcomeUrlPreview(resId){
     btn.disabled=true;
     return;
   }
-  prev.textContent=buildWelcomeUrl(name,r.check_in,r.check_out);
+  const tok=_welcomeKnownToken(r);
+  prev.textContent=tok?buildWelcomeStayUrl(tok):(WELCOME_OASIS_BASE+'?stay=… (se genera al copiar)');
   btn.textContent='🔗 Copiar link Welcome · '+name.toUpperCase();
   btn.disabled=false;
 }
 
-// Copia el link Welcome al portapapeles (solo copiar — no envía nada).
-function copyWelcomeLink(resId){
+// Copia el link Welcome dinámico (?stay=<token>) al portapapeles. Llama al
+// RPC admin ensure_welcome_link: si la reserva ya tiene token lo REUTILIZA
+// (link estable) y solo actualiza welcome_first_name; si no, genera uno.
+// Nunca modifica guest_name. Solo copia — no envía nada.
+async function copyWelcomeLink(resId){
   if(!requireRole(['admin']))return;
   const r=RES.find(x=>x.id===resId);if(!r)return;
   const elig=welcomeLinkEligibility(r);
   if(!elig.ok){toast('Link Welcome no disponible: '+elig.reason,'err');return;}
   const inp=document.getElementById('welcome-fn-'+resId);
+  const btn=document.getElementById('welcome-copy-'+resId);
   const name=(inp?inp.value:'').trim();
   if(!welcomeFirstNameValid(name)){toast('Primer nombre inválido para el link Welcome.','err');return;}
-  const url=buildWelcomeUrl(name,r.check_in,r.check_out);
-  if(navigator.clipboard&&navigator.clipboard.writeText){
-    navigator.clipboard.writeText(url).then(()=>toast('🔗 Link Welcome copiado','ok')).catch(()=>_bkMsgFallback(url));
-  }else{_bkMsgFallback(url);}
+  const _lbl=btn?btn.textContent:'';
+  if(btn){btn.disabled=true;btn.textContent='Generando enlace…';}
+  try{
+    const resp=await fetch(`${SB}/rest/v1/rpc/ensure_welcome_link`,{
+      method:'POST',
+      headers:{...sbH(),'Content-Type':'application/json'},
+      body:JSON.stringify({p_reservation_id:r.id,p_first_name:name})
+    });
+    if(!resp.ok){
+      let body=null;try{body=await resp.json();}catch(e){}
+      if(body&&body.code==='P0001'){toast(body.message||'No se pudo generar el link Welcome','err');return;}
+      if(body&&body.code==='42501'){toast('No autorizado para generar el link Welcome','err');return;}
+      toast('No se pudo generar el link Welcome. Reintenta.','err');
+      console.error('[Panel] ensure_welcome_link error',resp.status,body);
+      return;
+    }
+    const tok=await resp.json();
+    if(typeof tok!=='string'||!WELCOME_TOKEN_PATTERN.test(tok)){
+      toast('Respuesta inesperada al generar el link Welcome','err');
+      console.error('[Panel] ensure_welcome_link bad token',tok);
+      return;
+    }
+    r.welcome_token=tok;r.welcome_first_name=name;_welcomeTokenCache.set(r.id,tok);
+    const url=buildWelcomeStayUrl(tok);
+    const done=()=>{toast('🔗 Link Welcome copiado','ok');refreshWelcomeUrlPreview(resId);};
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(url).then(done).catch(()=>{_bkMsgFallback(url);refreshWelcomeUrlPreview(resId);});
+    }else{_bkMsgFallback(url);refreshWelcomeUrlPreview(resId);}
+  }catch(e){
+    console.error('[Panel] copyWelcomeLink',e);
+    toast('Error de red al generar el link Welcome','err');
+  }finally{
+    if(btn){btn.disabled=false;if(btn.textContent==='Generando enlace…')btn.textContent=_lbl;}
+  }
 }
 function copyBkPayMsg(id){
   if(!requireRole(['admin']))return;
