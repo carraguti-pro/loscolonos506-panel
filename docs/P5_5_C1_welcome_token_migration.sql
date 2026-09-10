@@ -1,6 +1,8 @@
 -- ============================================================================
 -- P5.5-C1 — LIVE WELCOME LINK · reservation-backed opaque token
--- DRAFT MIGRATION — NOT YET APPLIED. For review before touching production DB.
+-- APPLIED to production 2026-09-10 as two Supabase migrations:
+--   20260910200256_p5_5_c1_welcome_token_live_link
+--   20260910200408_p5_5_c1_ensure_welcome_link_revoke_anon  (explicit anon revoke)
 -- Project: zltgwfkdqvdteanxjigq  (public schema)
 --
 -- Conventions matched from existing migrations / functions:
