@@ -855,6 +855,19 @@ tr.historico-row:hover td{opacity:.82}
 .det-cobro-lbl{font-size:.5rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:.55rem;margin-bottom:.16rem}
 .det-admin-actions-grid{display:grid;grid-template-columns:1fr 1fr;gap:.28rem;margin-top:.28rem}
 .det-admin-actions-grid .btn-reg-pago{margin-top:0}
+/* Welcome Oasis — tarjeta independiente (P5.5-B1) · usa el lenguaje visual existente (oro + serif) */
+.welcome-card{border:1px solid rgba(201,168,76,.34);border-left:3px solid var(--gold);border-radius:7px;background:rgba(201,168,76,.055);padding:.85rem .95rem .9rem;margin:1rem 0 .95rem}
+.welcome-card-hd{font-size:.46rem;letter-spacing:.24em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:.5rem}
+.welcome-card-guest{font-family:'Cormorant Garamond',serif;font-size:1.2rem;font-weight:600;color:var(--ink);line-height:1.15;letter-spacing:-.01em}
+.welcome-card-dates{font-family:var(--font-num);font-size:.78rem;color:#5A5140;margin-top:.12rem;margin-bottom:.62rem}
+.welcome-card-fnlbl{display:block;font-size:.44rem;letter-spacing:.13em;text-transform:uppercase;color:#6F7480;font-weight:600;margin-bottom:.2rem}
+.welcome-card-fn{max-width:240px;padding:.42rem .62rem;font-size:.92rem;font-family:'Cormorant Garamond',serif;font-weight:600}
+.welcome-card-help{font-size:.54rem;color:var(--muted);line-height:1.45;margin:.34rem 0 .46rem}
+.welcome-card-url{font-family:var(--font-num);font-size:.55rem;color:var(--muted);word-break:break-all;background:rgba(0,0,0,.03);border-radius:4px;padding:.38rem .5rem;margin-bottom:.5rem}
+.welcome-card .btn-reg-pago{margin-top:0;border-style:solid;border-color:rgba(201,168,76,.6);background:rgba(201,168,76,.16);color:#6E5410}
+.welcome-card .btn-reg-pago:hover{background:rgba(201,168,76,.28);border-color:rgba(201,168,76,.82)}
+.welcome-card .btn-reg-pago:disabled{opacity:.42;cursor:not-allowed}
+.welcome-card-na{font-size:.62rem;color:var(--muted);line-height:1.5;margin-top:.1rem}
 /* Nuevo pago form */
 .det-np-form{border:1px solid rgba(201,168,76,.22);border-radius:6px;padding:.7rem .85rem;background:rgba(201,168,76,.03)}
 .det-np-title{font-size:.46rem;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:.45rem}
@@ -5233,6 +5246,37 @@ async function verDet(id){
         ${r.notes?`<div class="det-field det-field-wide"><span class="det-lbl">Notas</span><span class="det-val">${r.notes}</span></div>`:''}
       </div>
     </div>
+    ${(()=>{
+      // Tarjeta Welcome Oasis — visualmente independiente. El nombre COMPLETO
+      // del huésped que se muestra aquí es solo una ayuda de confirmación
+      // interna para el admin; a la URL pública sigue yendo únicamente el
+      // primer nombre validado (ver copyWelcomeLink / buildWelcomeUrl).
+      const _esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+      const _guest=_esc(r.guest_name||'—');
+      const _stay=`${welcomeFmtStayDate(r.check_in)} → ${welcomeFmtStayDate(r.check_out)}`;
+      const _elig=welcomeLinkEligibility(r);
+      if(!_elig.ok){
+        return `<div class="welcome-card">
+          <div class="welcome-card-hd">Welcome Oasis</div>
+          <div class="welcome-card-guest">${_guest}</div>
+          <div class="welcome-card-dates">${_stay}</div>
+          <div class="welcome-card-na">Link Welcome no disponible para esta reserva — ${_elig.reason}.</div>
+        </div>`;
+      }
+      const _fn=suggestWelcomeFirstName(r.guest_name);
+      const _url=buildWelcomeUrl(_fn||'Huesped',r.check_in,r.check_out);
+      const _btnFn=welcomeFirstNameValid(_fn)?' · '+_fn.toUpperCase():'';
+      return `<div class="welcome-card">
+        <div class="welcome-card-hd">Welcome Oasis</div>
+        <div class="welcome-card-guest">${_guest}</div>
+        <div class="welcome-card-dates">${_stay}</div>
+        <label class="welcome-card-fnlbl" for="welcome-fn-${r.id}">Primer nombre para Welcome</label>
+        <input id="welcome-fn-${r.id}" class="fi welcome-card-fn" value="${_esc(_fn)}" maxlength="40" autocomplete="off" spellcheck="false" oninput="refreshWelcomeUrlPreview('${r.id}')">
+        <div class="welcome-card-help">Solo este primer nombre irá en el link Welcome. Puedes corregirlo aquí sin modificar la reserva.</div>
+        <div id="welcome-url-${r.id}" class="welcome-card-url">${_url}</div>
+        <button type="button" id="welcome-copy-${r.id}" class="btn-reg-pago" onclick="copyWelcomeLink('${r.id}')">🔗 Copiar link Welcome${_btnFn}</button>
+      </div>`;
+    })()}
     <div class="det-section">
       <div class="det-section-lbl">Desglose financiero</div>
       <div class="det-fin-grid">
@@ -5258,6 +5302,7 @@ async function verDet(id){
     ${!isCancelada(r)?`<button class="btn btn-danger" onclick="chgSt('${r.id}','cancelada');closeModal('m-detalle')">Cancelar</button>`:''}
     <button class="btn btn-ghost" onclick="closeModal('m-detalle')">Cerrar</button>`;
   openModal('m-detalle');
+  if(document.getElementById('welcome-fn-'+r.id))refreshWelcomeUrlPreview(r.id);
   await loadPagosDetalle(r.id,totalCLP,r);
 }
 // ── PAGOS DETALLE (modal m-detalle) ──────────────────────────────
@@ -5402,6 +5447,131 @@ async function verComprobantePagoReserva(paymentId){
     console.error('[Panel] verComprobantePagoReserva',e);
     toast('No fue posible abrir el comprobante','err');
   }
+}
+// ══ WELCOME OASIS — LINK POR ESTADÍA (P5.5-B1) ═════════════════════
+// Genera el link personalizado de Welcome Oasis a partir de la reserva
+// REAL seleccionada por el admin. Welcome NO consulta Supabase: recibe
+// solo primer nombre + check-in + check-out por query string. Nunca se
+// incluye apellido, email, teléfono, código de reserva, documento, id
+// de reserva, plataforma, pago ni número de huéspedes.
+const WELCOME_OASIS_BASE='https://welcome-oasis-506a.netlify.app/';
+// Allowlist positiva de estados activos/confirmados para generar el link
+// (ver ELEGIBILIDAD, P5.5-B1). No basta con una blocklist de cancelación.
+const WELCOME_ACTIVE_STATUSES=['confirmada','confirmed','paid','pagada','en_curso'];
+
+// Parseo estricto YYYY-MM-DD con re-chequeo de componentes (rechaza
+// 2026-13-40, 2026-02-30, etc.).
+function welcomeParseISODate(value){
+  if(typeof value!=='string')return null;
+  const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if(!m)return null;
+  const y=+m[1],mo=+m[2],d=+m[3];
+  const dt=new Date(y,mo-1,d);
+  if(dt.getFullYear()!==y||dt.getMonth()!==mo-1||dt.getDate()!==d)return null;
+  return dt;
+}
+
+// Elegibilidad del link Welcome para una reserva ya cargada en RES.
+function welcomeLinkEligibility(r){
+  if(!r)return{ok:false,reason:'Reserva no encontrada'};
+  if(!WELCOME_ACTIVE_STATUSES.includes(r.status))
+    return{ok:false,reason:'estado no confirmado ('+(r.status||'—')+')'};
+  if(r.blocks_calendar!==true)
+    return{ok:false,reason:'la reserva no bloquea el calendario'};
+  const ci=welcomeParseISODate(r.check_in);
+  if(!ci)return{ok:false,reason:'check-in inválido'};
+  const co=welcomeParseISODate(r.check_out);
+  if(!co)return{ok:false,reason:'check-out inválido'};
+  if(co.getTime()<ci.getTime())return{ok:false,reason:'check-out anterior al check-in'};
+  return{ok:true};
+}
+
+// Sugerencia de primer nombre desde guest_name (texto libre). Puede venir
+// "Luis Torres", "LUIS TORRES", "María José Pérez" o, raro en export OTA,
+// "Torres, Luis". Es solo una SUGERENCIA: el admin puede corregirla antes
+// de copiar y esa corrección jamás se escribe en public.reservations.
+function suggestWelcomeFirstName(guestName){
+  let s=String(guestName||'').trim();
+  if(!s)return'';
+  if(s.includes(',')){
+    const after=s.split(',')[1];
+    if(after&&after.trim())s=after.trim();
+  }
+  const first=(s.split(/\s+/)[0]||'');
+  if(!first)return'';
+  if(first===first.toUpperCase()||first===first.toLowerCase())
+    return first.charAt(0).toUpperCase()+first.slice(1).toLowerCase();
+  return first;
+}
+
+// Validación local del primer nombre para el link. Debe aceptar EXACTAMENTE
+// la misma familia de caracteres que Welcome Oasis P5.3 (GUEST_NAME_PATTERN):
+// una o más "palabras" de letras Unicode separadas por un único espacio o
+// guion, cada palabra con como máximo un apóstrofo interno (recto o
+// tipográfico). Acepta "Luis", "María José", "Jean-Pierre", "O'Brien";
+// rechaza dígitos, signos, URLs, HTML y puntuación al inicio/fin. Trim +
+// límite 1–40 antes de la prueba.
+const WELCOME_NAME_PATTERN=/^\p{L}+(?:['’]\p{L}+)?(?:[ -]\p{L}+(?:['’]\p{L}+)?)*$/u;
+function welcomeFirstNameValid(v){
+  const s=String(v||'').trim();
+  if(s.length<1||s.length>40)return false;
+  return WELCOME_NAME_PATTERN.test(s);
+}
+
+// Formatea "YYYY-MM-DD" como "18 sep 2026" — misma tabla de meses y estilo
+// que Welcome Oasis P5.3, para que la tarjeta muestre las fechas de estadía
+// exactamente como las verá el huésped. Solo presentación (panel es ES).
+const WELCOME_MESES_ABREV=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+function welcomeFmtStayDate(value){
+  const d=welcomeParseISODate(value);
+  if(!d)return'—';
+  return String(d.getDate()).padStart(2,'0')+' '+WELCOME_MESES_ABREV[d.getMonth()]+' '+d.getFullYear();
+}
+
+// Construye la URL con API nativa. URLSearchParams codifica correctamente
+// acentos y espacios; Welcome (P5.3) los decodifica al leer la query.
+function buildWelcomeUrl(firstName,checkin,checkout){
+  const u=new URL(WELCOME_OASIS_BASE);
+  u.searchParams.set('guest',firstName);
+  u.searchParams.set('checkin',checkin);
+  u.searchParams.set('checkout',checkout);
+  return u.toString();
+}
+
+// Refresca la vista previa de la URL y el estado del botón al editar el
+// primer nombre en el modal de detalle.
+function refreshWelcomeUrlPreview(resId){
+  const inp=document.getElementById('welcome-fn-'+resId);
+  const prev=document.getElementById('welcome-url-'+resId);
+  const btn=document.getElementById('welcome-copy-'+resId);
+  if(!inp||!prev||!btn)return;
+  const r=RES.find(x=>x.id===resId);
+  if(!r)return;
+  const name=inp.value.trim();
+  if(!welcomeFirstNameValid(name)){
+    prev.textContent='Ingresa un primer nombre válido (solo letras, máx. 40).';
+    btn.textContent='🔗 Copiar link Welcome';
+    btn.disabled=true;
+    return;
+  }
+  prev.textContent=buildWelcomeUrl(name,r.check_in,r.check_out);
+  btn.textContent='🔗 Copiar link Welcome · '+name.toUpperCase();
+  btn.disabled=false;
+}
+
+// Copia el link Welcome al portapapeles (solo copiar — no envía nada).
+function copyWelcomeLink(resId){
+  if(!requireRole(['admin']))return;
+  const r=RES.find(x=>x.id===resId);if(!r)return;
+  const elig=welcomeLinkEligibility(r);
+  if(!elig.ok){toast('Link Welcome no disponible: '+elig.reason,'err');return;}
+  const inp=document.getElementById('welcome-fn-'+resId);
+  const name=(inp?inp.value:'').trim();
+  if(!welcomeFirstNameValid(name)){toast('Primer nombre inválido para el link Welcome.','err');return;}
+  const url=buildWelcomeUrl(name,r.check_in,r.check_out);
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(()=>toast('🔗 Link Welcome copiado','ok')).catch(()=>_bkMsgFallback(url));
+  }else{_bkMsgFallback(url);}
 }
 function copyBkPayMsg(id){
   if(!requireRole(['admin']))return;
